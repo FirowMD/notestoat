@@ -1,0 +1,39 @@
+[package]
+name = "notestoat"
+version = "0.4.0"
+description = "Simple notepad based on monaco editor"
+authors = ["FirowMD"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "notestoat_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.6.3", features = [] }
+
+[dependencies]
+tauri = { version = "2.11.3", features = [] }
+tauri-plugin-opener = "2.5.4"
+tauri-plugin-dialog = "2.7.1"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.150"
+notify = { version = "8.2.0", features = ["serde"] }
+encoding_rs = "0.8.35"
+sha2 = "0.11.0"
+chrono = "0.4.45"
+trash = "5.2.6"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-single-instance = "2.4.2"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Threading"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2.186"
