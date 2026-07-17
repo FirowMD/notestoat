@@ -1,9 +1,11 @@
+import type { Encoding } from './config';
+
 export interface FileInfo {
   id: string;
   path: string;
   name: string;
   content: string;
-  encoding: string;
+  encoding: Encoding;
   language: string;
   created: Date;
   modified: Date;
@@ -14,8 +16,6 @@ export interface FileInfo {
     line: number;
     column: number;
   };
-  stats: {
-    lines: number;
-    length: number;
-  };
 }
+
+export type NewFileInfo = Omit<FileInfo, 'id'>;

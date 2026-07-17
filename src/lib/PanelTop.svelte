@@ -1,17 +1,18 @@
 <script lang="ts">
-  import { invoke } from "@tauri-apps/api/core";
   import { FilePlus, FolderOpen, Save, WrapText, Eye, Palette, Code, RotateCcw, Info, PanelLeftClose, PanelLeft, FileCode, Clock, Droplet } from "@lucide/svelte";
+  import { documentService } from './documents/documentService';
   import { editorStore } from './stores/editor';
   import { themeStore } from './stores/theme';
   import type { Theme } from './stores/theme';
   import { fileStore } from './stores/files';
-  import { notificationStore } from './stores/notification';
   import { sidePanelStore } from './stores/sidePanelStore';
   import { monacoThemeStore } from './stores/monacoTheme';
-  import { availableLanguages, getLanguageFromExtension } from './stores/language';
+  import { availableLanguages } from './stores/language';
   import { configStore } from './stores/configStore';
-  import { open, save, message, ask } from '@tauri-apps/plugin-dialog';
+  import { message } from '@tauri-apps/plugin-dialog';
   import { onMount } from 'svelte';
+  import { ENCODINGS, type Encoding } from './types/config';
+  import { THEMES } from './types/theme';
   
 
   $: wordWrap = $editorStore.wordWrap;
@@ -45,12 +46,7 @@
     isLanguageMenuOpen = false;
   }
 
-  const themes = [
-    'Firow', 'catppuccin', 'cerberus', 'concord', 'crimson',
-    'fennec', 'hamlindigo', 'legacy', 'mint', 'modern', 'mona',
-    'nosh', 'nouveau', 'pine', 'reign', 'rocket', 'rose', 'sahara',
-    'seafoam', 'terminus', 'vintage', 'vox', 'wintry'
-  ] as const;
+  const themes = THEMES;
 
   let isThemeMenuOpen = false;
   let isMonacoThemeMenuOpen = false;
@@ -73,7 +69,7 @@
       document.documentElement.style.setProperty('--overlayOpacity', String(nextOpacity));
     } catch {}
     const enableTransparent = nextOpacity < 1;
-    configStore.save({
+    void configStore.save({
       window_opacity: nextOpacity,
       transparent_mode: enableTransparent
     });
@@ -81,108 +77,15 @@
   }
 
   function handleNewFile() {
-    fileStore.addUntitledFile();
+    documentService.createUntitled();
   }
 
   async function handleCloseActiveFile() {
-    const activeFileId = $fileStore.activeFileId;
-    if (activeFileId) {
-      const activeFile = $fileStore.files.find(f => f.id === activeFileId);
-      if (activeFile?.path) {
-        try {
-          await invoke('unwatch_file', { path: activeFile.path });
-        } catch (error) {
-          console.error('Error unwatching file:', error);
-        }
-      }
-      fileStore.removeFile(activeFileId);
-    }
+    if ($fileStore.activeFileId) await documentService.closeDocument($fileStore.activeFileId);
   }
 
   async function handleOpenFile() {
-    try {
-      const selected = await open({
-        multiple: true,
-      });
-      
-      if (selected) {
-        const files = Array.isArray(selected) ? selected : [selected];
-        
-        for (const filePath of files) {
-          const fileData = await invoke('read_file', { 
-            path: filePath,
-            encoding: $editorStore.encoding || 'utf-8'
-          }) as { content: string, hash: string };
-          
-          let fileSystemModified: Date | undefined;
-          try {
-            const modifiedTimestamp = await invoke('get_file_metadata', { path: filePath }) as number;
-            fileSystemModified = new Date(modifiedTimestamp * 1000);
-          } catch (error) {
-            console.error('Error getting file metadata:', error);
-          }
-          
-          const pathParts = filePath.split(/[/\\]/);
-          const fileName = pathParts[pathParts.length - 1];
-          const extension = fileName.split('.').pop()?.toLowerCase() || '';
-          
-          const nextId = ($fileStore.files.length + 1).toString();
-          const fileInfo = {
-            id: nextId,
-            path: filePath,
-            name: fileName,
-            content: fileData.content,
-            encoding: 'utf-8',
-            language: getLanguageFromExtension(extension),
-            created: new Date(),
-            modified: new Date(),
-            fileSystemModified,
-            isModified: false,
-            hash: fileData.hash,
-            cursor: {
-              line: 1,
-              column: 1
-            },
-            stats: {
-              lines: fileData.content.split('\n').length,
-              length: fileData.content.length
-            }
-          };
-      
-          fileStore.addFile(fileInfo);
-          
-          if (filePath) {
-            try {
-              await invoke('watch_file', { path: filePath });
-            } catch (error) {
-              console.error('Error setting up file watch:', error);
-            }
-          }
-        }
-      }
-    } catch (err) {
-      console.error("Error opening file:", err);
-      const errorStr = String(err);
-      if (errorStr.includes('File too large')) {
-        notificationStore.show('File too large (>100MB). Large files are not supported.', 'error');
-      } else if (errorStr.includes('PERMISSION_DENIED')) {
-        const isAdmin = await invoke('check_admin_privileges') as boolean;
-        if (!isAdmin) {
-          const shouldRelaunch = await ask(
-            `Failed to open file due to insufficient permissions.\n\nWould you like to restart the application with administrator privileges?`,
-            { title: 'Permission Denied', kind: 'warning' }
-          );
-          if (shouldRelaunch) {
-            const files = $fileStore.files.map(f => f.path).filter(p => p);
-            await invoke('relaunch_as_admin', { args: files });
-          }
-        } else {
-          notificationStore.show('Permission denied even with admin privileges.', 'error');
-        }
-      } else {
-        notificationStore.show("Error opening file", "error");
-      }
-    }
+    await documentService.openFromDialog();
   }
 
   function openRecentFilesMenu() {
@@ -234,169 +137,20 @@
   }
 
   async function handleOpenRecentFile(filePath: string) {
-    try {
-      const fileData = await invoke('read_file', { 
-        path: filePath,
-        encoding: $editorStore.encoding || 'utf-8'
-      }) as { content: string, hash: string };
-      
-      let fileSystemModified: Date | undefined;
-      try {
-        const modifiedTimestamp = await invoke('get_file_metadata', { path: filePath }) as number;
-        fileSystemModified = new Date(modifiedTimestamp * 1000);
-      } catch (error) {
-        console.error('Error getting file metadata:', error);
-      }
-      
-      const pathParts = filePath.split(/[/\\]/);
-      const fileName = pathParts[pathParts.length - 1];
-      const extension = fileName.split('.').pop()?.toLowerCase() || '';
-      
-      const nextId = ($fileStore.files.length + 1).toString();
-      const fileInfo = {
-        id: nextId,
-        path: filePath,
-        name: fileName,
-        content: fileData.content,
-        encoding: 'utf-8',
-        language: getLanguageFromExtension(extension),
-        created: new Date(),
-        modified: new Date(),
-        fileSystemModified,
-        isModified: false,
-        hash: fileData.hash,
-        cursor: {
-          line: 1,
-          column: 1
-        },
-        stats: {
-          lines: fileData.content.split('\n').length,
-          length: fileData.content.length
-        }
-      };
-      
-      fileStore.addFile(fileInfo);
-      
-      if (filePath) {
-        try {
-          await invoke('watch_file', { path: filePath });
-        } catch (error) {
-          console.error('Error setting up file watch:', error);
-        }
-      }
-      
-      isRecentFilesMenuOpen = false;
-    } catch (err) {
-      console.error("Error opening recent file:", err);
-      const errorStr = String(err);
-      if (errorStr.includes('File too large')) {
-        notificationStore.show('File too large (>100MB). Large files are not supported.', 'error');
-      } else if (errorStr.includes('PERMISSION_DENIED')) {
-        const isAdmin = await invoke('check_admin_privileges') as boolean;
-        if (!isAdmin) {
-          const shouldRelaunch = await ask(
-            `Failed to open file due to insufficient permissions.\n\nWould you like to restart the application with administrator privileges?`,
-            { title: 'Permission Denied', kind: 'warning' }
-          );
-          if (shouldRelaunch) {
-            await invoke('relaunch_as_admin', { args: [filePath] });
-          }
-        } else {
-          notificationStore.show('Permission denied even with admin privileges.', 'error');
-        }
-      } else if (errorStr.includes('No such file')) {
-        notificationStore.show('File not found. It may have been moved or deleted.', 'error');
-        // Remove from recent files if it doesn't exist
-        const updatedRecent = recentFiles.filter(f => f !== filePath);
-        configStore.save({ recent_files: updatedRecent });
-      } else {
-        notificationStore.show("Error opening file", "error");
-      }
-    }
+    await documentService.openRecentFile(filePath);
+    isRecentFilesMenuOpen = false;
   }
 
   async function handleSaveFile() {
-    const activeFile = $fileStore.files.find(f => f.id === $fileStore.activeFileId);
-    if (!activeFile) return;
-
-    try {
-      let savePath: string | null = activeFile.path;
-      
-      if (!savePath) {
-        const suggestedName = activeFile.name && activeFile.name !== 'Untitled' ? activeFile.name : 'untitled.txt';
-        savePath = await save({
-          defaultPath: suggestedName
-        });
-
-        if (!savePath) return;
-      }
-      
-      await invoke('save_file', { 
-        path: savePath,
-        content: activeFile.content
-      });
-      
-      const savedHash = await invoke('calculate_file_hash_command', { content: activeFile.content }) as string;
-      
-      let fileSystemModified: Date | undefined;
-      try {
-        const modifiedTimestamp = await invoke('get_file_metadata', { path: savePath }) as number;
-        fileSystemModified = new Date(modifiedTimestamp * 1000);
-      } catch (error) {
-        console.error('Error getting file metadata after save:', error);
-      }
-      
-      if (savePath !== activeFile.path) {
-        const pathParts = savePath.split(/[/\\]/);
-        const fileName = pathParts[pathParts.length - 1];
-        
-        fileStore.updateFile(activeFile.id, {
-          path: savePath,
-          name: fileName,
-          hash: savedHash,
-          modified: new Date(),
-          fileSystemModified
-        });
-      } else {
-        fileStore.updateFile(activeFile.id, {
-          hash: savedHash,
-          modified: new Date(),
-          fileSystemModified
-        });
-      }
-      
-      fileStore.markAsSaved(activeFile.id);
-      notificationStore.show("File saved successfully", "success", 2500);
-      
-    } catch (err) {
-      console.error("Error saving file:", err);
-      const errorStr = String(err);
-      if (errorStr.includes('PERMISSION_DENIED')) {
-        const isAdmin = await invoke('check_admin_privileges') as boolean;
-        if (!isAdmin) {
-          const shouldRelaunch = await ask(
-            `Failed to save file due to insufficient permissions.\n\nWould you like to restart the application with administrator privileges?`,
-            { title: 'Permission Denied', kind: 'warning' }
-          );
-          if (shouldRelaunch) {
-            const files = $fileStore.files.map(f => f.path).filter(p => p);
-            await invoke('relaunch_as_admin', { args: files });
-          }
-        } else {
-          notificationStore.show('Permission denied even with admin privileges.', 'error');
-        }
-      } else {
-        notificationStore.show("Error saving file", "error");
-      }
-    }
+    if ($fileStore.activeFileId) await documentService.saveDocument($fileStore.activeFileId);
   }
 
   async function handleRestoreFile() {
-    await fileStore.restoreRecentFile();
+    await documentService.restoreRecentFile();
   }
 
   async function handleAbout() {
-    await message('NoteStoat v.0.4.0', 'About');
+    await message('NoteStoat v.0.4.1', 'About');
   }
 
 
@@ -440,57 +194,13 @@
     }
   }
 
-  const encodings = [
-    'utf-8',
-    'utf-16le',
-    'utf-16be',
-    'windows-1252'
-  ];
+  const encodings = ENCODINGS;
 
   let isEncodingMenuOpen = false;
 
-  async function handleEncodingChange(encoding: string) {
+  async function handleEncodingChange(encoding: Encoding) {
     if ($fileStore.activeFileId) {
-      const activeFile = $fileStore.files.find(f => f.id === $fileStore.activeFileId);
-      if (activeFile && activeFile.path) {
-        try {
-          const fileData = await invoke('read_file', { 
-            path: activeFile.path,
-            encoding: encoding
-          }) as { content: string, hash: string };
-          
-          fileStore.updateFile(activeFile.id, {
-            content: fileData.content,
-            encoding: encoding,
-            hash: fileData.hash
-          });
-          
-          editorStore.setEncoding(encoding);
-          
-        } catch (error) {
-          console.error('Error changing file encoding:', error);
-          const errorStr = String(error);
-          if (errorStr.includes('File too large')) {
-            notificationStore.show('File too large (>100MB). Large files are not supported.', 'error');
-          } else if (errorStr.includes('PERMISSION_DENIED')) {
-            const isAdmin = await invoke('check_admin_privileges') as boolean;
-            if (!isAdmin) {
-              const shouldRelaunch = await ask(
-                `Failed to read file due to insufficient permissions.\n\nWould you like to restart the application with administrator privileges?`,
-                { title: 'Permission Denied', kind: 'warning' }
-              );
-              if (shouldRelaunch) {
-                const files = $fileStore.files.map(f => f.path).filter(p => p);
-                await invoke('relaunch_as_admin', { args: files });
-              }
-            } else {
-              notificationStore.show('Permission denied even with admin privileges.', 'error');
-            }
-          } else {
-            notificationStore.show("Error changing file encoding", "error");
-          }
-        }
-      }
+      await documentService.changeEncoding($fileStore.activeFileId, encoding);
     } else {
       editorStore.setEncoding(encoding);
     }

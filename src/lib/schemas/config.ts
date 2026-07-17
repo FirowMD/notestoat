@@ -1,38 +1,13 @@
 import { z } from 'zod';
 import type { AppConfig } from '../types/config';
+import { ENCODINGS } from '../types/config';
+import { THEMES } from '../types/theme';
 
-const ThemeSchema = z.enum([
-  'Firow',
-  'catppuccin',
-  'cerberus',
-  'concord',
-  'crimson',
-  'fennec',
-  'hamlindigo',
-  'legacy',
-  'mint',
-  'modern',
-  'mona',
-  'nosh',
-  'nouveau',
-  'pine',
-  'reign',
-  'rocket',
-  'rose',
-  'sahara',
-  'seafoam',
-  'terminus',
-  'vintage',
-  'vox',
-  'wintry'
-] as const);
+const ThemeSchema = z.enum(THEMES);
 
-const EncodingSchema = z.enum([
-  'utf-8',
-  'utf-16le',
-  'utf-16be',
-  'windows-1252'
-] as const);
+const EncodingSchema = z.enum(ENCODINGS);
+
+const MarkdownViewModeSchema = z.enum(['edit', 'split', 'preview'] as const);
 
 const PartialAppConfigSchema = z.object({
   colorscheme: ThemeSchema.optional().catch(undefined),
@@ -42,6 +17,7 @@ const PartialAppConfigSchema = z.object({
   font_size: z.number().int().min(8).max(72).optional().catch(undefined),
   word_wrap: z.boolean().optional().catch(undefined),
   show_invisibles: z.boolean().optional().catch(undefined),
+  markdown_view_mode: MarkdownViewModeSchema.optional().catch(undefined),
   default_encoding: EncodingSchema.optional().catch(undefined),
   transparent_mode: z.boolean().optional().catch(undefined),
   window_opacity: z.number().min(0.1).max(1).optional().catch(undefined)
@@ -49,13 +25,14 @@ const PartialAppConfigSchema = z.object({
 
 export function createDefaultAppConfig(): AppConfig {
   return {
-    colorscheme: 'cerberus',
+    colorscheme: 'Firow',
     monaco_editor_theme: 'Firow',
     recent_files: [],
     opened_files: [],
     font_size: 14,
     word_wrap: false,
     show_invisibles: false,
+    markdown_view_mode: 'split',
     default_encoding: 'utf-8',
     transparent_mode: false,
     window_opacity: 0.85

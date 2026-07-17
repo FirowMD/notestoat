@@ -44,45 +44,32 @@ function createMonacoThemeStore() {
         }
       }
     },
-    setTheme: async (themeName: string) => {
-      set(themeName);
-      
-      // Update config
-      const config = get(configStore);
-      configStore.updateConfig({
-        ...config,
-        monaco_editor_theme: themeName
-      });
+    setTheme: async (themeName: string, persist = true) => {
+      let appliedTheme = themeName;
 
-      // Apply theme to Monaco Editor
       if (monaco) {
         if (themeName === 'vs' || themeName === 'vs-dark' || themeName === 'hc-black') {
-          // Built-in themes
           monaco.editor.setTheme(themeName);
         } else {
-          // Custom theme from file
           try {
             const themeContent = await invoke<string>('read_monaco_theme', { themeName });
             const themeData = parseMonacoThemeData(themeContent);
-            
-            // Define the custom theme
             monaco.editor.defineTheme(themeName, {
               base: themeData.base || 'vs-dark',
               inherit: themeData.inherit !== false,
               rules: themeData.rules || [],
               colors: themeData.colors || {}
             });
-            
-            // Apply the theme
             monaco.editor.setTheme(themeName);
           } catch (error) {
             console.error('Error loading Monaco theme:', error);
-            // Fallback to vs-dark if theme loading fails
             monaco.editor.setTheme('vs-dark');
-            set('vs-dark');
+            appliedTheme = 'vs-dark';
           }
         }
       }
+      set(appliedTheme);
+      if (persist) await configStore.save({ monaco_editor_theme: appliedTheme });
     },
     getAvailableThemes: async (): Promise<string[]> => {
       try {

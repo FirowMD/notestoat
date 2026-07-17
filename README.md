@@ -9,6 +9,7 @@ Simple notepad based on monaco editor
 ## Features
 
 - [x] Monaco editor
+- [x] Live Markdown preview with edit, split, and preview modes
 - [x] File Drag&Drop support
 - [x] Status bar: language, length, lines, cursor position, line endings, encoding
 - [x] Search bar for files
@@ -52,5 +53,6 @@ JSON files can be found [here](https://github.com/brijeshb42/monaco-themes/tree/
 | Restore | Ctrl+Shift+T |
 | Word wrap | Alt+Z |
 | Show/hide side panel | Ctrl+B |
+| Toggle Markdown preview | Ctrl+Shift+V |
 
 Download [here](https://github.com/FirowMD/notestoat/releases)

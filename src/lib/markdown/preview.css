@@ -1,0 +1,527 @@
+.preview-shell {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background: color-mix(in oklab, var(--color-surface-950) 94%, black);
+  color: var(--color-surface-100);
+  scrollbar-color: var(--color-surface-700) transparent;
+}
+
+.markdown-preview {
+  width: min(100%, 54rem);
+  min-height: 100%;
+  margin: 0 auto;
+  padding: 2.25rem clamp(1.25rem, 4%, 3.25rem) 4rem;
+  font-family: var(--base-font-family);
+  font-size: 1rem;
+  line-height: 1.72;
+  overflow-wrap: anywhere;
+  text-rendering: optimizeLegibility;
+}
+
+.markdown-preview > :first-child {
+  margin-top: 0;
+}
+
+.markdown-preview > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-preview h1,
+.markdown-preview h2,
+.markdown-preview h3,
+.markdown-preview h4,
+.markdown-preview h5,
+.markdown-preview h6 {
+  margin: 1.75em 0 0.7em;
+  color: var(--color-surface-50);
+  font-weight: 680;
+  line-height: 1.25;
+  overflow-wrap: break-word;
+}
+
+.markdown-preview h1 {
+  padding-bottom: 0.45em;
+  border-bottom: 1px solid color-mix(in oklab, var(--color-surface-500) 40%,
+    transparent);
+  font-size: 2.1rem;
+  letter-spacing: -0.025em;
+}
+
+.markdown-preview h2 {
+  padding-bottom: 0.35em;
+  border-bottom: 1px solid color-mix(in oklab, var(--color-surface-600) 35%,
+    transparent);
+  font-size: 1.55rem;
+  letter-spacing: -0.015em;
+}
+
+.markdown-preview h3 {
+  font-size: 1.28rem;
+}
+.markdown-preview h4 {
+  font-size: 1.08rem;
+}
+.markdown-preview h5 {
+  font-size: 0.95rem;
+}
+.markdown-preview h6 {
+  color: var(--color-surface-300);
+  font-size: 0.88rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.markdown-preview p,
+.markdown-preview ul,
+.markdown-preview ol,
+.markdown-preview dl,
+.markdown-preview blockquote,
+.markdown-preview figure,
+.markdown-preview table,
+.markdown-preview .markdown-code-block,
+.markdown-preview > pre {
+  margin: 0 0 1.1rem;
+}
+
+.markdown-preview ul,
+.markdown-preview ol {
+  padding-left: 1.65rem;
+}
+
+.markdown-preview ul ul,
+.markdown-preview ul ol,
+.markdown-preview ol ul,
+.markdown-preview ol ol {
+  margin: 0.25rem 0 0;
+}
+
+.markdown-preview li + li {
+  margin-top: 0.3rem;
+}
+
+.markdown-preview li > p {
+  margin: 0.35rem 0;
+}
+
+.markdown-preview li::marker {
+  color: var(--color-primary-300);
+}
+
+.markdown-preview .contains-task-list,
+.markdown-preview ul:has(> li > input[type='checkbox']) {
+  padding-left: 0.25rem;
+  list-style: none;
+}
+
+.markdown-preview .task-list-item,
+.markdown-preview li:has(> input[type='checkbox']) {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.markdown-preview a {
+  color: var(--color-primary-300);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, var(--color-primary-300) 45%,
+    transparent);
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.18em;
+  transition: color 120ms ease, text-decoration-color 120ms ease;
+}
+
+.markdown-preview a:hover {
+  color: var(--color-primary-100);
+  text-decoration-color: currentColor;
+}
+
+.markdown-preview a:focus-visible,
+.markdown-copy-button:focus-visible,
+.markdown-preview summary:focus-visible {
+  outline: 2px solid var(--color-primary-400);
+  outline-offset: 3px;
+}
+
+.markdown-preview strong {
+  color: var(--color-surface-50);
+  font-weight: 700;
+}
+
+.markdown-preview em {
+  color: color-mix(in oklab, var(--color-surface-100) 90%,
+    var(--color-primary-200));
+}
+
+.markdown-preview del {
+  color: var(--color-surface-400);
+  text-decoration-color: var(--color-error-400);
+}
+
+.markdown-preview mark {
+  border-radius: 2px;
+  padding: 0.08em 0.18em;
+  background: color-mix(in oklab, var(--color-warning-500) 38%, transparent);
+  color: var(--color-surface-50);
+}
+
+.markdown-preview blockquote {
+  padding: 0.7rem 1rem;
+  border-left: 3px solid var(--color-primary-500);
+  border-radius: 0 4px 4px 0;
+  background: color-mix(in oklab, var(--color-surface-800) 48%, transparent);
+  color: var(--color-surface-300);
+}
+
+.markdown-preview blockquote blockquote {
+  margin-top: 0.75rem;
+  border-left-color: var(--color-secondary-500);
+}
+
+.markdown-preview blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-preview :not(pre) > code,
+.markdown-preview kbd,
+.markdown-preview samp {
+  padding: 0.14em 0.38em;
+  border: 1px solid color-mix(in oklab, var(--color-surface-500) 34%,
+    transparent);
+  border-radius: 4px;
+  background: var(--color-surface-900);
+  color: var(--color-secondary-100);
+  font-family: 'Cascadia Code', 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.88em;
+}
+
+.markdown-preview kbd {
+  border-bottom-width: 2px;
+  box-shadow: 0 1px 0 color-mix(in oklab, var(--color-surface-400) 28%,
+    transparent);
+  color: var(--color-surface-50);
+  white-space: nowrap;
+}
+
+.markdown-code-block {
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--color-surface-500) 30%,
+    transparent);
+  border-radius: 7px;
+  background: color-mix(in oklab, var(--color-surface-950) 74%, black);
+  box-shadow: 0 8px 24px color-mix(in oklab, black 14%, transparent);
+}
+
+.markdown-code-toolbar {
+  display: flex;
+  min-height: 2.2rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.35rem 0.55rem 0.35rem 0.85rem;
+  border-bottom: 1px solid color-mix(in oklab, var(--color-surface-500) 24%,
+    transparent);
+  background: color-mix(in oklab, var(--color-surface-800) 58%, black);
+}
+
+.markdown-code-language {
+  color: var(--color-surface-400);
+  font-family: 'Cascadia Code', 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.markdown-copy-button {
+  min-width: 3.6rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-surface-400);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.72rem;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.markdown-copy-button:hover {
+  border-color: color-mix(in oklab, var(--color-surface-500) 36%, transparent);
+  background: color-mix(in oklab, var(--color-surface-700) 40%, transparent);
+  color: var(--color-surface-100);
+}
+
+.markdown-copy-button[data-state='copied'] {
+  color: var(--color-success-400);
+}
+
+.markdown-copy-button[data-state='error'] {
+  color: var(--color-error-400);
+}
+
+.markdown-preview pre {
+  overflow: auto;
+  margin: 0;
+  padding: 1.05rem 1.15rem;
+  background: transparent;
+  scrollbar-color: var(--color-surface-700) transparent;
+  tab-size: 2;
+}
+
+.markdown-preview > pre {
+  border: 1px solid color-mix(in oklab, var(--color-surface-500) 30%,
+    transparent);
+  border-radius: 7px;
+  background: color-mix(in oklab, var(--color-surface-950) 74%, black);
+}
+
+.markdown-preview pre code {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-surface-100);
+  font-family: 'Cascadia Code', 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.86rem;
+  line-height: 1.62;
+  white-space: pre;
+}
+
+/* Highlight.js token palette, scoped to the Markdown preview. */
+.markdown-preview .hljs-comment,
+.markdown-preview .hljs-quote {
+  color: var(--color-surface-500);
+  font-style: italic;
+}
+
+.markdown-preview .hljs-keyword,
+.markdown-preview .hljs-selector-tag,
+.markdown-preview .hljs-literal,
+.markdown-preview .hljs-section,
+.markdown-preview .hljs-link {
+  color: var(--color-primary-300);
+}
+
+.markdown-preview .hljs-string,
+.markdown-preview .hljs-regexp,
+.markdown-preview .hljs-addition,
+.markdown-preview .hljs-attribute,
+.markdown-preview .hljs-meta .hljs-string {
+  color: var(--color-success-400);
+}
+
+.markdown-preview .hljs-title,
+.markdown-preview .hljs-title.class_,
+.markdown-preview .hljs-title.function_,
+.markdown-preview .hljs-selector-id,
+.markdown-preview .hljs-selector-class {
+  color: var(--color-secondary-300);
+}
+
+.markdown-preview .hljs-number,
+.markdown-preview .hljs-symbol,
+.markdown-preview .hljs-bullet,
+.markdown-preview .hljs-variable,
+.markdown-preview .hljs-template-variable {
+  color: var(--color-warning-400);
+}
+
+.markdown-preview .hljs-built_in,
+.markdown-preview .hljs-type,
+.markdown-preview .hljs-class .hljs-title {
+  color: var(--color-tertiary-300);
+}
+
+.markdown-preview .hljs-attr,
+.markdown-preview .hljs-property,
+.markdown-preview .hljs-params,
+.markdown-preview .hljs-subst {
+  color: var(--color-surface-200);
+}
+
+.markdown-preview .hljs-meta,
+.markdown-preview .hljs-doctag {
+  color: var(--color-secondary-400);
+}
+
+.markdown-preview .hljs-deletion {
+  color: var(--color-error-400);
+}
+
+.markdown-preview .hljs-emphasis {
+  font-style: italic;
+}
+.markdown-preview .hljs-strong {
+  font-weight: 700;
+}
+
+.markdown-preview table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow: auto;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid color-mix(in oklab, var(--color-surface-500) 40%,
+    transparent);
+  border-radius: 6px;
+  scrollbar-color: var(--color-surface-700) transparent;
+}
+
+.markdown-preview th,
+.markdown-preview td {
+  padding: 0.6rem 0.8rem;
+  border-right: 1px solid color-mix(in oklab, var(--color-surface-500) 34%,
+    transparent);
+  border-bottom: 1px solid color-mix(in oklab, var(--color-surface-500) 34%,
+    transparent);
+  text-align: left;
+}
+
+.markdown-preview th:last-child,
+.markdown-preview td:last-child {
+  border-right: 0;
+}
+.markdown-preview tr:last-child td {
+  border-bottom: 0;
+}
+
+.markdown-preview th {
+  background: var(--color-surface-900);
+  color: var(--color-surface-50);
+  font-weight: 650;
+}
+
+.markdown-preview tr:nth-child(even) {
+  background: color-mix(in oklab, var(--color-surface-800) 30%, transparent);
+}
+
+.markdown-preview tbody tr:hover {
+  background: color-mix(in oklab, var(--color-primary-900) 18%, transparent);
+}
+
+.markdown-preview img,
+.markdown-preview video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.3rem auto;
+  border-radius: 7px;
+  box-shadow: 0 8px 26px color-mix(in oklab, black 16%, transparent);
+}
+
+.markdown-preview audio {
+  width: 100%;
+  margin: 1rem 0;
+}
+
+.markdown-preview figure {
+  text-align: center;
+}
+
+.markdown-preview figure img {
+  margin-bottom: 0.6rem;
+}
+
+.markdown-preview figcaption,
+.markdown-preview caption {
+  color: var(--color-surface-400);
+  font-size: 0.84rem;
+  font-style: italic;
+}
+
+.markdown-preview caption {
+  padding: 0.5rem;
+  caption-side: bottom;
+}
+
+.markdown-preview hr {
+  height: 1px;
+  margin: 2.25rem 0;
+  border: 0;
+  background: linear-gradient(90deg, transparent, var(--color-surface-600),
+    transparent);
+}
+
+.markdown-preview input[type='checkbox'] {
+  width: 0.95rem;
+  height: 0.95rem;
+  margin: 0;
+  accent-color: var(--color-primary-500);
+}
+
+.markdown-preview details {
+  margin: 0 0 1rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid color-mix(in oklab, var(--color-surface-500) 34%,
+    transparent);
+  border-radius: 6px;
+  background: color-mix(in oklab, var(--color-surface-900) 55%, transparent);
+}
+
+.markdown-preview summary {
+  color: var(--color-surface-100);
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.markdown-preview details[open] summary {
+  margin-bottom: 0.7rem;
+}
+
+.markdown-preview dt {
+  color: var(--color-surface-50);
+  font-weight: 700;
+}
+
+.markdown-preview dd {
+  margin: 0.25rem 0 0.75rem 1.25rem;
+  color: var(--color-surface-300);
+}
+
+.markdown-preview abbr[title] {
+  cursor: help;
+  text-decoration-style: dotted;
+  text-underline-offset: 0.18em;
+}
+
+.markdown-preview sup,
+.markdown-preview sub {
+  font-size: 0.72em;
+}
+
+.preview-empty {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  color: var(--color-surface-500);
+}
+
+.preview-empty p {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+@media (max-width: 640px) {
+  .markdown-preview {
+    padding: 1.5rem 1.1rem 3rem;
+  }
+
+  .markdown-preview h1 {
+    font-size: 1.7rem;
+  }
+
+  .markdown-preview h2 {
+    font-size: 1.4rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .markdown-preview a,
+  .markdown-copy-button {
+    transition: none;
+  }
+}

@@ -1,11 +1,12 @@
 {
   "name": "notestoat",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "",
   "type": "module",
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
+    "test": "deno test tests",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
@@ -17,6 +18,10 @@
     "@tauri-apps/plugin-dialog": "^2.7.1",
     "@tauri-apps/plugin-opener": "^2.5.4",
     "@tailwindcss/vite": "^4.3.1",
+    "dompurify": "^3.4.12",
+    "highlight.js": "^11.11.1",
+    "marked": "^18.0.6",
+    "marked-highlight": "^2.2.4",
     "paneforge": "^1.0.2",
     "tailwindcss": "^4.3.1",
     "zod": "^4.4.3"

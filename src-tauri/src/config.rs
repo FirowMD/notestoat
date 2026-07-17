@@ -11,6 +11,8 @@ pub struct GlobalConfig {
     pub font_size: Option<i32>,
     pub word_wrap: Option<bool>,
     pub show_invisibles: Option<bool>,
+    pub markdown_view_mode: Option<String>,
+    pub default_encoding: Option<String>,
     pub transparent_mode: Option<bool>,
     pub window_opacity: Option<f32>,
 }
@@ -23,6 +25,8 @@ impl Default for GlobalConfig {
             font_size: Some(14),
             word_wrap: Some(false),
             show_invisibles: Some(false),
+            markdown_view_mode: Some("split".to_string()),
+            default_encoding: Some("utf-8".to_string()),
             transparent_mode: Some(false),
             window_opacity: Some(0.85),
         }
@@ -48,11 +52,13 @@ impl Default for InstanceConfig {
 pub struct AppConfig {
     pub colorscheme: Option<String>,
     pub monaco_editor_theme: Option<String>,
-    pub recent_files: Option<Vec<String>>, 
-    pub opened_files: Option<Vec<String>>, 
+    pub recent_files: Option<Vec<String>>,
+    pub opened_files: Option<Vec<String>>,
     pub font_size: Option<i32>,
     pub word_wrap: Option<bool>,
     pub show_invisibles: Option<bool>,
+    pub markdown_view_mode: Option<String>,
+    pub default_encoding: Option<String>,
     pub transparent_mode: Option<bool>,
     pub window_opacity: Option<f32>,
 }
@@ -67,6 +73,8 @@ impl Default for AppConfig {
             font_size: Some(14),
             word_wrap: Some(false),
             show_invisibles: Some(false),
+            markdown_view_mode: Some("split".to_string()),
+            default_encoding: Some("utf-8".to_string()),
             transparent_mode: Some(false),
             window_opacity: Some(0.85),
         }
@@ -85,6 +93,8 @@ impl AppConfig {
             font_size: global.font_size,
             word_wrap: global.word_wrap,
             show_invisibles: global.show_invisibles,
+            markdown_view_mode: global.markdown_view_mode,
+            default_encoding: global.default_encoding,
             transparent_mode: global.transparent_mode,
             window_opacity: global.window_opacity,
             recent_files: instance.recent_files,
@@ -99,6 +109,8 @@ impl AppConfig {
             font_size: self.font_size,
             word_wrap: self.word_wrap,
             show_invisibles: self.show_invisibles,
+            markdown_view_mode: self.markdown_view_mode.clone(),
+            default_encoding: self.default_encoding.clone(),
             transparent_mode: self.transparent_mode,
             window_opacity: self.window_opacity,
         }
@@ -109,16 +121,6 @@ impl AppConfig {
             recent_files: self.recent_files.clone(),
             opened_files: self.opened_files.clone(),
         }
-    }
-
-    pub fn from_file(path: &Path) -> Result<Self, String> {
-        let config_file = fs::File::open(path).map_err(|e| e.to_string())?;
-        serde_json::from_reader(config_file).map_err(|e| e.to_string())
-    }
-
-    pub fn save_to_file(&self, path: &Path) -> Result<(), String> {
-        let config_str = serde_json::to_string_pretty(self).map_err(|e| e.to_string())?;
-        fs::write(path, config_str).map_err(|e| e.to_string())
     }
 }
 
@@ -165,12 +167,6 @@ pub struct Storage {
 }
 
 impl Storage {
-    pub fn new() -> Self {
-        Self {
-            app_data: Mutex::new(AppData::new()),
-        }
-    }
-    
     pub fn with_instance_id(instance_id: String) -> Self {
         let mut app_data = AppData::new();
         app_data.instance_id = Some(instance_id);
@@ -184,41 +180,44 @@ pub struct ConfigManager;
 
 impl ConfigManager {
     pub fn get_notestoat_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
-        let config_dir = app_handle
-            .path()
-            .config_dir()
-            .map_err(|e| e.to_string())?;
+        let config_dir = app_handle.path().config_dir().map_err(|e| e.to_string())?;
         let notestoat_dir = config_dir.join("notestoat");
-        
+
         if !notestoat_dir.exists() {
             fs::create_dir_all(&notestoat_dir).map_err(|e| e.to_string())?;
         }
-        
+
         Ok(notestoat_dir)
     }
-    
+
     pub fn get_global_config_path(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
         let notestoat_dir = Self::get_notestoat_dir(app_handle)?;
         Ok(notestoat_dir.join("notestoat-global.json"))
     }
 
-    pub fn get_instance_config_path(app_handle: &tauri::AppHandle, instance_id: &str) -> Result<PathBuf, String> {
+    pub fn get_instance_config_path(
+        app_handle: &tauri::AppHandle,
+        instance_id: &str,
+    ) -> Result<PathBuf, String> {
         let notestoat_dir = Self::get_notestoat_dir(app_handle)?;
         let instances_dir = notestoat_dir.join("notestoat-instances");
-        
+
         if !instances_dir.exists() {
             fs::create_dir_all(&instances_dir).map_err(|e| e.to_string())?;
         }
-        
+
         Ok(instances_dir.join(format!("{}.json", instance_id)))
     }
 
     pub fn load_config(app_handle: &tauri::AppHandle) -> Result<(), String> {
         let storage = app_handle.state::<Storage>();
         let mut app_data = storage.app_data.lock().map_err(|e| e.to_string())?;
-        
-        let instance_id = app_data.instance_id.clone().unwrap_or_else(|| "main".to_string());
-        
+
+        let instance_id = app_data
+            .instance_id
+            .clone()
+            .unwrap_or_else(|| "main".to_string());
+
         let global_path = Self::get_global_config_path(app_handle)?;
         let global_config = if global_path.exists() {
             GlobalConfig::from_file(&global_path)?
@@ -227,7 +226,7 @@ impl ConfigManager {
             config.save_to_file(&global_path)?;
             config
         };
-        
+
         let instance_path = Self::get_instance_config_path(app_handle, &instance_id)?;
         let instance_config = if instance_path.exists() {
             InstanceConfig::from_file(&instance_path)?
@@ -236,7 +235,7 @@ impl ConfigManager {
             config.save_to_file(&instance_path)?;
             config
         };
-        
+
         app_data.app_config = AppConfig::from_global_and_instance(global_config, instance_config);
         app_data.instance_id = Some(instance_id);
 
@@ -246,17 +245,20 @@ impl ConfigManager {
     pub fn save_config(app_handle: &tauri::AppHandle, config: AppConfig) -> Result<(), String> {
         let storage = app_handle.state::<Storage>();
         let mut app_data = storage.app_data.lock().map_err(|e| e.to_string())?;
-        
-        let instance_id = app_data.instance_id.clone().unwrap_or_else(|| "main".to_string());
-        
+
+        let instance_id = app_data
+            .instance_id
+            .clone()
+            .unwrap_or_else(|| "main".to_string());
+
         let global_config = config.to_global();
         let global_path = Self::get_global_config_path(app_handle)?;
         global_config.save_to_file(&global_path)?;
-        
+
         let instance_config = config.to_instance();
         let instance_path = Self::get_instance_config_path(app_handle, &instance_id)?;
         instance_config.save_to_file(&instance_path)?;
-        
+
         app_data.app_config = config;
 
         Ok(())
@@ -271,101 +273,35 @@ impl ConfigManager {
     pub fn add_to_opened_files(app_handle: &tauri::AppHandle, path: String) -> Result<(), String> {
         let storage = app_handle.state::<Storage>();
         let mut app_data = storage.app_data.lock().map_err(|e| e.to_string())?;
-        
+
         let mut opened_files = app_data.app_config.opened_files.take().unwrap_or_default();
-        
+
         if !opened_files.contains(&path) {
             opened_files.push(path);
             app_data.app_config.opened_files = Some(opened_files);
-            
-            let instance_id = app_data.instance_id.clone().unwrap_or_else(|| "main".to_string());
+
+            let instance_id = app_data
+                .instance_id
+                .clone()
+                .unwrap_or_else(|| "main".to_string());
             let instance_config = app_data.app_config.to_instance();
             drop(app_data);
-            
+
             let instance_path = Self::get_instance_config_path(app_handle, &instance_id)?;
             instance_config.save_to_file(&instance_path)?;
-            
+
             let storage = app_handle.state::<Storage>();
             let mut app_data = storage.app_data.lock().map_err(|e| e.to_string())?;
             app_data.app_config.opened_files = instance_config.opened_files;
         }
-        
+
         Ok(())
     }
 
-    pub fn add_to_recent_files(app_handle: &tauri::AppHandle, path: String) -> Result<(), String> {
-        let storage = app_handle.state::<Storage>();
-        let mut app_data = storage.app_data.lock().map_err(|e| e.to_string())?;
-        
-        let mut recent_files = app_data.app_config.recent_files.take().unwrap_or_default();
-        
-        recent_files.retain(|p| p != &path);
-        recent_files.insert(0, path);
-        
-        if recent_files.len() > 100 {
-            recent_files.truncate(100);
-        }
-        
-        app_data.app_config.recent_files = Some(recent_files);
-        
-        let instance_id = app_data.instance_id.clone().unwrap_or_else(|| "main".to_string());
-        let instance_config = app_data.app_config.to_instance();
-        drop(app_data);
-        
-        let instance_path = Self::get_instance_config_path(app_handle, &instance_id)?;
-        instance_config.save_to_file(&instance_path)?;
-        
-        let storage = app_handle.state::<Storage>();
-        let mut app_data = storage.app_data.lock().map_err(|e| e.to_string())?;
-        app_data.app_config.recent_files = instance_config.recent_files;
-        
-        Ok(())
-    }
-
-    pub fn remove_from_opened_files(app_handle: &tauri::AppHandle, path: &str) -> Result<(), String> {
-        let storage = app_handle.state::<Storage>();
-        let mut app_data = storage.app_data.lock().map_err(|e| e.to_string())?;
-        
-        if let Some(mut opened_files) = app_data.app_config.opened_files.take() {
-            opened_files.retain(|p| p != path);
-            app_data.app_config.opened_files = Some(opened_files);
-            
-            let instance_id = app_data.instance_id.clone().unwrap_or_else(|| "main".to_string());
-            let instance_config = app_data.app_config.to_instance();
-            drop(app_data);
-            
-            let instance_path = Self::get_instance_config_path(app_handle, &instance_id)?;
-            instance_config.save_to_file(&instance_path)?;
-            
-            let storage = app_handle.state::<Storage>();
-            let mut app_data = storage.app_data.lock().map_err(|e| e.to_string())?;
-            app_data.app_config.opened_files = instance_config.opened_files;
-        }
-        
-        Ok(())
-    }
-
-    pub fn clear_opened_files(app_handle: &tauri::AppHandle) -> Result<(), String> {
-        let storage = app_handle.state::<Storage>();
-        let mut app_data = storage.app_data.lock().map_err(|e| e.to_string())?;
-        
-        app_data.app_config.opened_files = Some(vec![]);
-        
-        let instance_id = app_data.instance_id.clone().unwrap_or_else(|| "main".to_string());
-        let instance_config = app_data.app_config.to_instance();
-        drop(app_data);
-        
-        let instance_path = Self::get_instance_config_path(app_handle, &instance_id)?;
-        instance_config.save_to_file(&instance_path)?;
-        
-        let storage = app_handle.state::<Storage>();
-        let mut app_data = storage.app_data.lock().map_err(|e| e.to_string())?;
-        app_data.app_config.opened_files = instance_config.opened_files;
-        
-        Ok(())
-    }
-    
-    pub fn set_instance_id(app_handle: &tauri::AppHandle, instance_id: String) -> Result<(), String> {
+    pub fn set_instance_id(
+        app_handle: &tauri::AppHandle,
+        instance_id: String,
+    ) -> Result<(), String> {
         let storage = app_handle.state::<Storage>();
         let mut app_data = storage.app_data.lock().map_err(|e| e.to_string())?;
         app_data.instance_id = Some(instance_id);
@@ -386,4 +322,18 @@ pub fn save_config(app_handle: tauri::AppHandle, config: AppConfig) -> Result<()
 #[tauri::command]
 pub fn get_config(app_handle: tauri::AppHandle) -> Result<AppConfig, String> {
     ConfigManager::get_config(&app_handle)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::AppConfig;
+
+    #[test]
+    fn default_config_exposes_the_frontend_encoding_field() {
+        let config = AppConfig::default();
+        assert_eq!(config.default_encoding.as_deref(), Some("utf-8"));
+
+        let json = serde_json::to_value(config).unwrap();
+        assert_eq!(json["default_encoding"], "utf-8");
+    }
 }
