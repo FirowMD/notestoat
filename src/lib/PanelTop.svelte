@@ -150,7 +150,7 @@
   }
 
   async function handleAbout() {
-    await message('NoteStoat v.0.4.0', 'About');
+    await message('NoteStoat v.0.4.1', 'About');
   }
 
 
