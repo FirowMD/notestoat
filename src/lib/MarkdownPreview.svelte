@@ -1,49 +1,166 @@
 <script lang="ts">
   import DOMPurify from 'dompurify';
-  import { marked } from 'marked';
-  import { openUrl } from '@tauri-apps/plugin-opener';
   import { isTauri } from '@tauri-apps/api/core';
+  import { openUrl } from '@tauri-apps/plugin-opener';
   import { FileText } from '@lucide/svelte';
+  import { compileMarkdown } from './markdown/renderer';
+  import './markdown/preview.css';
 
   export let content = '';
   export let fileName = 'Untitled';
 
-  function renderMarkdown(source: string): string {
-    const rendered = marked.parse(source, {
-      async: false,
-      breaks: true,
-      gfm: true
-    }) as string;
+  const languageNames: Record<string, string> = {
+    bat: 'Batch',
+    bash: 'Shell',
+    batch: 'Batch',
+    cmd: 'Batch',
+    csharp: 'C#',
+    cs: 'C#',
+    cpp: 'C++',
+    html: 'HTML',
+    js: 'JavaScript',
+    javascript: 'JavaScript',
+    jsx: 'JSX',
+    md: 'Markdown',
+    plaintext: 'Plain text',
+    ps1: 'PowerShell',
+    powershell: 'PowerShell',
+    pwsh: 'PowerShell',
+    py: 'Python',
+    rs: 'Rust',
+    sh: 'Shell',
+    shell: 'Shell',
+    ts: 'TypeScript',
+    tsx: 'TSX',
+    typescript: 'TypeScript',
+    xml: 'HTML/XML',
+    yaml: 'YAML',
+    yml: 'YAML'
+  };
 
-    return DOMPurify.sanitize(rendered, {
+  function renderMarkdown(source: string): string {
+    return DOMPurify.sanitize(compileMarkdown(source), {
       USE_PROFILES: { html: true }
     });
   }
 
-  async function handlePreviewClick(event: MouseEvent) {
-    const target = event.target as HTMLElement;
-    const link = target.closest('a');
-    if (!link) return;
+  function getLanguageName(code: HTMLElement): string {
+    const languageClass = [...code.classList].find((name) => name.startsWith('language-'));
+    const language = languageClass?.slice('language-'.length).toLowerCase();
+    return language ? languageNames[language] ?? language : 'Code';
+  }
 
-    const href = link.getAttribute('href');
-    if (!href || href.startsWith('#')) return;
+  function decorateCodeBlocks(node: HTMLElement): void {
+    for (const code of node.querySelectorAll<HTMLElement>('pre > code')) {
+      const pre = code.parentElement;
+      if (!pre || pre.parentElement?.classList.contains('markdown-code-block')) continue;
 
-    event.preventDefault();
+      const block = document.createElement('div');
+      block.className = 'markdown-code-block';
 
-    if (/^https?:\/\//i.test(href) || /^mailto:/i.test(href)) {
-      if (isTauri()) {
-        await openUrl(href);
-      } else {
-        window.open(href, '_blank', 'noopener,noreferrer');
-      }
+      const toolbar = document.createElement('div');
+      toolbar.className = 'markdown-code-toolbar';
+
+      const language = document.createElement('span');
+      language.className = 'markdown-code-language';
+      language.textContent = getLanguageName(code);
+
+      const copyButton = document.createElement('button');
+      copyButton.type = 'button';
+      copyButton.className = 'markdown-copy-button';
+      copyButton.dataset.copyCode = '';
+      copyButton.textContent = 'Copy';
+      copyButton.setAttribute('aria-label', `Copy ${language.textContent} code`);
+
+      toolbar.append(language, copyButton);
+      pre.before(block);
+      block.append(toolbar, pre);
     }
   }
 
-  function handlePreviewLinks(node: HTMLElement) {
-    node.addEventListener('click', handlePreviewClick);
+  async function copyText(text: string): Promise<void> {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.append(textarea);
+    textarea.select();
+    const copied = document.execCommand('copy');
+    textarea.remove();
+
+    if (!copied) throw new Error('Clipboard is unavailable');
+  }
+
+  function enhancePreview(node: HTMLElement, html: string) {
+    const resetTimers = new Set<number>();
+
+    function scheduleDecoration(): void {
+      queueMicrotask(() => decorateCodeBlocks(node));
+    }
+
+    async function handleClick(event: MouseEvent): Promise<void> {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+
+      const copyButton = target.closest<HTMLButtonElement>('[data-copy-code]');
+      if (copyButton) {
+        const code = copyButton.closest('.markdown-code-block')?.querySelector('code');
+        if (!code) return;
+
+        try {
+          await copyText(code.textContent?.replace(/\n$/, '') ?? '');
+          copyButton.textContent = 'Copied';
+          copyButton.dataset.state = 'copied';
+        } catch {
+          copyButton.textContent = 'Failed';
+          copyButton.dataset.state = 'error';
+        }
+
+        const timer = window.setTimeout(() => {
+          if (copyButton.isConnected) {
+            copyButton.textContent = 'Copy';
+            delete copyButton.dataset.state;
+          }
+          resetTimers.delete(timer);
+        }, 1600);
+        resetTimers.add(timer);
+        return;
+      }
+
+      const link = target.closest<HTMLAnchorElement>('a');
+      if (!link) return;
+
+      const href = link.getAttribute('href');
+      if (!href || href.startsWith('#')) return;
+
+      if (/^https?:\/\//i.test(href) || /^mailto:/i.test(href)) {
+        event.preventDefault();
+        if (isTauri()) {
+          await openUrl(href);
+        } else {
+          window.open(href, '_blank', 'noopener,noreferrer');
+        }
+      }
+    }
+
+    node.addEventListener('click', handleClick);
+    scheduleDecoration();
+
     return {
+      update(updatedHtml: string) {
+        if (updatedHtml !== html) {
+          html = updatedHtml;
+          scheduleDecoration();
+        }
+      },
       destroy() {
-        node.removeEventListener('click', handlePreviewClick);
+        node.removeEventListener('click', handleClick);
+        for (const timer of resetTimers) window.clearTimeout(timer);
       }
     };
   }
@@ -53,7 +170,7 @@
 
 <section class="preview-shell" aria-label={`Preview of ${fileName}`}>
   {#if content.trim()}
-    <article class="markdown-preview" use:handlePreviewLinks>
+    <article class="markdown-preview" use:enhancePreview={renderedMarkdown}>
       {@html renderedMarkdown}
     </article>
   {:else}
@@ -63,191 +180,3 @@
     </div>
   {/if}
 </section>
-
-<style>
-  .preview-shell {
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background: color-mix(in oklab, var(--color-surface-950) 94%, black);
-    color: var(--color-surface-100);
-  }
-
-  .markdown-preview {
-    width: min(100%, 52rem);
-    min-height: 100%;
-    margin: 0 auto;
-    padding: 2rem clamp(1.25rem, 4%, 3rem) 4rem;
-    font-family: var(--base-font-family);
-    font-size: 1rem;
-    line-height: 1.7;
-    overflow-wrap: anywhere;
-  }
-
-  .markdown-preview :global(h1),
-  .markdown-preview :global(h2),
-  .markdown-preview :global(h3),
-  .markdown-preview :global(h4),
-  .markdown-preview :global(h5),
-  .markdown-preview :global(h6) {
-    margin: 1.6em 0 0.65em;
-    color: var(--color-surface-50);
-    font-weight: 650;
-    line-height: 1.25;
-    letter-spacing: 0;
-  }
-
-  .markdown-preview :global(h1) {
-    margin-top: 0;
-    padding-bottom: 0.45em;
-    border-bottom: 1px solid color-mix(in oklab, var(--color-surface-500) 40%, transparent);
-    font-size: 2rem;
-  }
-
-  .markdown-preview :global(h2) {
-    padding-bottom: 0.35em;
-    border-bottom: 1px solid color-mix(in oklab, var(--color-surface-600) 35%, transparent);
-    font-size: 1.5rem;
-  }
-
-  .markdown-preview :global(h3) { font-size: 1.25rem; }
-  .markdown-preview :global(h4) { font-size: 1.05rem; }
-
-  .markdown-preview :global(p),
-  .markdown-preview :global(ul),
-  .markdown-preview :global(ol),
-  .markdown-preview :global(blockquote),
-  .markdown-preview :global(pre),
-  .markdown-preview :global(table) {
-    margin: 0 0 1rem;
-  }
-
-  .markdown-preview :global(ul),
-  .markdown-preview :global(ol) {
-    padding-left: 1.6rem;
-  }
-
-  .markdown-preview :global(li + li) {
-    margin-top: 0.3rem;
-  }
-
-  .markdown-preview :global(a) {
-    color: var(--color-primary-300);
-    text-decoration: underline;
-    text-decoration-color: color-mix(in oklab, var(--color-primary-300) 45%, transparent);
-    text-underline-offset: 0.18em;
-  }
-
-  .markdown-preview :global(a:hover) {
-    color: var(--color-primary-100);
-    text-decoration-color: currentColor;
-  }
-
-  .markdown-preview :global(blockquote) {
-    padding: 0.15rem 1rem;
-    border-left: 3px solid var(--color-primary-500);
-    color: var(--color-surface-300);
-    background: color-mix(in oklab, var(--color-surface-800) 45%, transparent);
-  }
-
-  .markdown-preview :global(blockquote > :last-child) {
-    margin-bottom: 0;
-  }
-
-  .markdown-preview :global(code) {
-    padding: 0.14em 0.35em;
-    border: 1px solid color-mix(in oklab, var(--color-surface-500) 32%, transparent);
-    border-radius: 3px;
-    background: var(--color-surface-900);
-    color: var(--color-secondary-100);
-    font-family: 'Cascadia Code', 'SFMono-Regular', Consolas, monospace;
-    font-size: 0.88em;
-  }
-
-  .markdown-preview :global(pre) {
-    overflow: auto;
-    padding: 1rem;
-    border: 1px solid color-mix(in oklab, var(--color-surface-500) 30%, transparent);
-    border-radius: 5px;
-    background: color-mix(in oklab, var(--color-surface-950) 72%, black);
-  }
-
-  .markdown-preview :global(pre code) {
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: var(--color-surface-100);
-    font-size: 0.875rem;
-  }
-
-  .markdown-preview :global(table) {
-    display: block;
-    width: max-content;
-    max-width: 100%;
-    overflow: auto;
-    border-collapse: collapse;
-  }
-
-  .markdown-preview :global(th),
-  .markdown-preview :global(td) {
-    padding: 0.55rem 0.75rem;
-    border: 1px solid color-mix(in oklab, var(--color-surface-500) 42%, transparent);
-    text-align: left;
-  }
-
-  .markdown-preview :global(th) {
-    background: var(--color-surface-900);
-    color: var(--color-surface-50);
-    font-weight: 600;
-  }
-
-  .markdown-preview :global(tr:nth-child(even)) {
-    background: color-mix(in oklab, var(--color-surface-800) 32%, transparent);
-  }
-
-  .markdown-preview :global(img) {
-    display: block;
-    max-width: 100%;
-    height: auto;
-    margin: 1.25rem auto;
-    border-radius: 5px;
-  }
-
-  .markdown-preview :global(hr) {
-    height: 1px;
-    margin: 2rem 0;
-    border: 0;
-    background: color-mix(in oklab, var(--color-surface-500) 42%, transparent);
-  }
-
-  .markdown-preview :global(input[type='checkbox']) {
-    margin-right: 0.45rem;
-    accent-color: var(--color-primary-500);
-  }
-
-  .preview-empty {
-    display: flex;
-    width: 100%;
-    height: 100%;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.65rem;
-    color: var(--color-surface-500);
-  }
-
-  .preview-empty p {
-    margin: 0;
-    font-size: 0.875rem;
-  }
-
-  @media (max-width: 640px) {
-    .markdown-preview {
-      padding: 1.5rem 1.1rem 3rem;
-    }
-
-    .markdown-preview :global(h1) {
-      font-size: 1.65rem;
-    }
-  }
-</style>

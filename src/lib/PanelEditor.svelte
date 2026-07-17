@@ -22,6 +22,13 @@
   let lastContentHash = '';
   let splitPercent = 52;
 
+  const viewButtonBaseClass = [
+    'inline-flex min-w-[4.7rem] cursor-pointer items-center justify-center gap-1.5',
+    'rounded-[3px] border-0 px-[0.55rem] text-[0.72rem] transition-colors',
+    'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary-400',
+    'max-[680px]:min-w-9 max-[680px]:px-1.5'
+  ].join(' ');
+
   $: activeFile = $fileStore.files.find(file => file.id === $fileStore.activeFileId);
   $: isMarkdownFile = Boolean(
     activeFile && (
@@ -56,6 +63,13 @@
   function setViewMode(mode: MarkdownViewMode) {
     editorStore.setMarkdownViewMode(mode);
     setTimeout(() => editor?.layout(), 0);
+  }
+
+  function getViewButtonClass(mode: MarkdownViewMode): string {
+    const stateClass = viewMode === mode
+      ? 'bg-primary-700 text-primary-50'
+      : 'bg-transparent text-surface-400 hover:bg-surface-700/50 hover:text-surface-100';
+    return `${viewButtonBaseClass} ${stateClass}`;
   }
 
   function togglePreview() {
@@ -286,70 +300,77 @@
   });
 </script>
 
-<div class="editor-surface">
+<div class="relative z-10 flex h-full min-h-0 w-full min-w-0 flex-col bg-surface-950">
   {#if isMarkdownFile}
-    <div class="markdown-toolbar">
-      <div class="document-kind">
-        <FileText size={15} />
+    <div
+      class="flex min-h-[38px] items-center justify-between gap-3 border-b border-surface-500/30 bg-surface-900 px-[0.65rem] pl-[0.85rem] text-surface-200"
+    >
+      <div class="flex min-w-0 items-center gap-[0.45rem] text-xs font-semibold">
+        <FileText class="text-primary-300" size={15} />
         <span>Markdown</span>
       </div>
 
-      <div class="view-switcher" role="group" aria-label="Markdown view">
+      <div
+        class="inline-flex h-7 items-stretch rounded-[5px] border border-surface-500/40 bg-surface-950 p-0.5"
+        role="group"
+        aria-label="Markdown view"
+      >
         <button
           type="button"
-          class:active={viewMode === 'edit'}
+          class={getViewButtonClass('edit')}
           aria-pressed={viewMode === 'edit'}
           onclick={() => setViewMode('edit')}
           title="Edit Markdown"
         >
           <Pencil size={14} />
-          <span>Edit</span>
+          <span class="max-[680px]:hidden">Edit</span>
         </button>
         <button
           type="button"
-          class:active={viewMode === 'split'}
+          class={getViewButtonClass('split')}
           aria-pressed={viewMode === 'split'}
           onclick={() => setViewMode('split')}
           title="Split editor and preview"
         >
           <Columns2 size={14} />
-          <span>Split</span>
+          <span class="max-[680px]:hidden">Split</span>
         </button>
         <button
           type="button"
-          class:active={viewMode === 'preview'}
+          class={getViewButtonClass('preview')}
           aria-pressed={viewMode === 'preview'}
           onclick={() => setViewMode('preview')}
           title="Preview Markdown (Ctrl+Shift+V)"
         >
           <Eye size={14} />
-          <span>Preview</span>
+          <span class="max-[680px]:hidden">Preview</span>
         </button>
       </div>
     </div>
   {/if}
 
   <div
-    class="editor-workspace mode-{effectiveViewMode}"
+    class="flex min-h-0 min-w-0 flex-1 overflow-hidden max-[680px]:flex-col"
     bind:this={workspaceRef}
   >
     <section
-      class="editor-pane"
-      class:visually-hidden-pane={effectiveViewMode === 'preview'}
+      class="relative min-h-0 min-w-0 flex-auto {effectiveViewMode === 'split'
+        ? 'shrink-0 grow-0 max-[680px]:!flex-1'
+        : ''} {effectiveViewMode === 'preview' ? 'hidden' : ''}"
       style={editorPaneStyle}
       aria-label="Text editor"
       aria-hidden={effectiveViewMode === 'preview'}
       bind:this={containerRef}
     >
       <EasyMonacoEditor onLoad={handleMonaco}>
-        <div class="editor-host" bind:this={editorRef}></div>
+        <div class="absolute inset-0 size-full" bind:this={editorRef}></div>
       </EasyMonacoEditor>
     </section>
 
     {#if isMarkdownFile && effectiveViewMode === 'split'}
       <!-- svelte-ignore a11y_no_noninteractive_tabindex a11y_no_noninteractive_element_interactions -->
       <div
-        class="split-resizer"
+        class="relative z-[2] w-[5px] flex-[0_0_5px] cursor-col-resize border-0 bg-surface-800 p-0 after:absolute after:inset-x-px after:inset-y-0 after:bg-transparent after:content-[''] after:transition-colors hover:after:bg-primary-500 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary-400 focus-visible:after:bg-primary-500 max-[680px]:hidden"
         role="separator"
         aria-label="Resize editor and preview"
         aria-orientation="vertical"
@@ -363,7 +384,11 @@
     {/if}
 
     {#if isMarkdownFile && effectiveViewMode !== 'edit'}
-      <div class="preview-pane">
+      <div
+        class="relative min-h-0 min-w-0 flex-[1_1_0] {effectiveViewMode === 'split'
+          ? 'max-[680px]:border-t-[3px] max-[680px]:border-surface-800'
+          : ''}"
+      >
         <MarkdownPreview
           content={activeFile?.content || ''}
           fileName={activeFile?.name || 'Untitled'}
@@ -372,223 +397,28 @@
     {/if}
   </div>
 
-  <div class="status-bar">
-    <div class="status-group status-document">
-      <span class="language-status">{$editorStore.language}</span>
-      <span>{$editorStore.stats.lines} lines</span>
-      <span>{$editorStore.stats.length} characters</span>
+  <div
+    class="flex min-h-6 items-center justify-between gap-4 border-t border-primary-400/35 bg-primary-900 px-[0.65rem] text-[0.7rem] text-primary-50"
+  >
+    <div class="flex min-w-0 items-center">
+      <span class="whitespace-nowrap uppercase">{$editorStore.language}</span>
+      <span
+        class="ml-[0.7rem] whitespace-nowrap border-l border-primary-200/35 pl-[0.7rem] max-[680px]:hidden"
+      >{$editorStore.stats.lines} lines</span>
+      <span
+        class="ml-[0.7rem] whitespace-nowrap border-l border-primary-200/35 pl-[0.7rem] max-[680px]:hidden"
+      >{$editorStore.stats.length} characters</span>
     </div>
-    <div class="status-group status-position">
-      <span>Ln {$editorStore.cursor.line}, Col {$editorStore.cursor.column}</span>
-      <span>{$editorStore.lineEnding}</span>
-      <span class="encoding-status">{$editorStore.encoding}</span>
+    <div class="flex min-w-0 items-center">
+      <span class="whitespace-nowrap max-[680px]:hidden"
+        >Ln {$editorStore.cursor.line}, Col {$editorStore.cursor.column}</span
+      >
+      <span
+        class="ml-[0.7rem] whitespace-nowrap border-l border-primary-200/35 pl-[0.7rem] max-[680px]:hidden"
+      >{$editorStore.lineEnding}</span>
+      <span
+        class="ml-[0.7rem] whitespace-nowrap border-l border-primary-200/35 pl-[0.7rem] uppercase"
+      >{$editorStore.encoding}</span>
     </div>
   </div>
 </div>
-
-<style>
-  .editor-surface {
-    position: relative;
-    z-index: 10;
-    display: flex;
-    width: 100%;
-    height: 100%;
-    min-width: 0;
-    min-height: 0;
-    flex-direction: column;
-    background: var(--color-surface-950);
-  }
-
-  .markdown-toolbar {
-    display: flex;
-    min-height: 38px;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding: 0 0.65rem 0 0.85rem;
-    border-bottom: 1px solid color-mix(in oklab, var(--color-surface-500) 32%, transparent);
-    background: color-mix(in oklab, var(--color-surface-900) 94%, black);
-    color: var(--color-surface-200);
-  }
-
-  .document-kind {
-    display: flex;
-    min-width: 0;
-    align-items: center;
-    gap: 0.45rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-  }
-
-  .document-kind :global(svg) {
-    color: var(--color-primary-300);
-  }
-
-  .view-switcher {
-    display: inline-flex;
-    height: 28px;
-    align-items: stretch;
-    padding: 2px;
-    border: 1px solid color-mix(in oklab, var(--color-surface-500) 38%, transparent);
-    border-radius: 5px;
-    background: var(--color-surface-950);
-  }
-
-  .view-switcher button {
-    display: inline-flex;
-    min-width: 4.7rem;
-    align-items: center;
-    justify-content: center;
-    gap: 0.35rem;
-    padding: 0 0.55rem;
-    border: 0;
-    border-radius: 3px;
-    background: transparent;
-    color: var(--color-surface-400);
-    font: inherit;
-    font-size: 0.72rem;
-    cursor: pointer;
-  }
-
-  .view-switcher button:hover {
-    color: var(--color-surface-100);
-    background: color-mix(in oklab, var(--color-surface-700) 45%, transparent);
-  }
-
-  .view-switcher button:focus-visible,
-  .split-resizer:focus-visible {
-    outline: 2px solid var(--color-primary-400);
-    outline-offset: 1px;
-  }
-
-  .view-switcher button.active {
-    background: var(--color-primary-700);
-    color: var(--color-primary-50);
-  }
-
-  .editor-workspace {
-    display: flex;
-    min-width: 0;
-    min-height: 0;
-    flex: 1;
-    overflow: hidden;
-  }
-
-  .editor-pane,
-  .preview-pane {
-    position: relative;
-    min-width: 0;
-    min-height: 0;
-  }
-
-  .editor-pane {
-    flex: 1 1 auto;
-  }
-
-  .mode-split .editor-pane {
-    flex-grow: 0;
-    flex-shrink: 0;
-  }
-
-  .preview-pane {
-    flex: 1 1 0;
-  }
-
-  .visually-hidden-pane {
-    display: none;
-  }
-
-  .editor-host {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-  }
-
-  .split-resizer {
-    position: relative;
-    z-index: 2;
-    width: 5px;
-    flex: 0 0 5px;
-    cursor: col-resize;
-    padding: 0;
-    border: 0;
-    background: var(--color-surface-800);
-  }
-
-  .split-resizer::after {
-    position: absolute;
-    inset: 0 1px;
-    background: transparent;
-    content: '';
-    transition: background 120ms ease;
-  }
-
-  .split-resizer:hover::after,
-  .split-resizer:focus-visible::after {
-    background: var(--color-primary-500);
-  }
-
-  .status-bar {
-    display: flex;
-    min-height: 24px;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0 0.65rem;
-    border-top: 1px solid color-mix(in oklab, var(--color-primary-400) 35%, transparent);
-    background: var(--color-primary-900);
-    color: var(--color-primary-50);
-    font-size: 0.7rem;
-  }
-
-  .status-group {
-    display: flex;
-    min-width: 0;
-    align-items: center;
-  }
-
-  .status-group span {
-    white-space: nowrap;
-  }
-
-  .status-group span + span {
-    margin-left: 0.7rem;
-    padding-left: 0.7rem;
-    border-left: 1px solid color-mix(in oklab, var(--color-primary-200) 35%, transparent);
-  }
-
-  .language-status,
-  .encoding-status {
-    text-transform: uppercase;
-  }
-
-  @media (max-width: 680px) {
-    .editor-workspace.mode-split {
-      flex-direction: column;
-    }
-
-    .mode-split .editor-pane {
-      flex: 1 1 0 !important;
-    }
-
-    .mode-split .preview-pane {
-      border-top: 3px solid var(--color-surface-800);
-    }
-
-    .split-resizer {
-      display: none;
-    }
-
-    .view-switcher button {
-      min-width: 2.25rem;
-      padding: 0 0.4rem;
-    }
-
-    .view-switcher button span,
-    .status-document span:not(.language-status),
-    .status-position span:not(.encoding-status) {
-      display: none;
-    }
-  }
-</style>
