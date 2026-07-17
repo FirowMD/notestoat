@@ -72,6 +72,10 @@
         if (config.show_invisibles !== undefined) {
           editorStore.setShowInvisibles(config.show_invisibles);
         }
+
+        if (config.markdown_view_mode) {
+          editorStore.setMarkdownViewMode(config.markdown_view_mode, false);
+        }
         
         if (isTauri()) {
           const win = getCurrentWindow();

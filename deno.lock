@@ -16,6 +16,8 @@
     "npm:@tauri-apps/cli@^2.11.3": "2.11.3",
     "npm:@tauri-apps/plugin-dialog@^2.7.1": "2.7.1",
     "npm:@tauri-apps/plugin-opener@^2.5.4": "2.5.4",
+    "npm:dompurify@^3.4.12": "3.4.12",
+    "npm:marked@^18.0.6": "18.0.6",
     "npm:paneforge@^1.0.2": "1.0.2_svelte@5.56.4",
     "npm:svelte-check@^4.7.1": "4.7.1_svelte@5.56.4_typescript@6.0.3",
     "npm:svelte@^5.56.4": "5.56.4",
@@ -976,6 +978,12 @@
     "devalue@5.8.1": {
       "integrity": "sha512-4CXDYRBGqN+57wVJkuXBYmpAVUSg3L6JAQa/DFqm238G73E1wuyc/JhGQJzN7vUf/CMphYau2zXbfWzDR5aTEw=="
     },
+    "dompurify@3.4.12": {
+      "integrity": "sha512-zQvGet8Z2sWbQhCmfFz/T5QWH2oBmjnqK3qvOjaqaNLrLEF912WamU+ohnTp0TCep/MFVHpdJuCZEdFOdTnEFg==",
+      "optionalDependencies": [
+        "@types/trusted-types"
+      ]
+    },
     "enhanced-resolve@5.21.6": {
       "integrity": "sha512-aNnGCvbJ/RIyWo1IuhNdVjnNF+EjH9wpzpNHt+ci/m9He9LJvUN8wrCcXjp9cWsGNAuvSpVFTx/vraAFQ8qGjQ==",
       "dependencies": [
@@ -1107,6 +1115,10 @@
       "dependencies": [
         "@jridgewell/sourcemap-codec"
       ]
+    },
+    "marked@18.0.6": {
+      "integrity": "sha512-MrV5puXBfuiy6wl6DLaq3BtIJQAJToAd5zt/ZKhRfGRAuFPALE7/4Y7jnxRQoEgK/pBgurGqLyAuRgZ2xOjr6w==",
+      "bin": true
     },
     "mri@1.2.0": {
       "integrity": "sha512-tzzskb3bG8LvYGFF/mDTpq3jpI6Q9wc3LEmBaghu+DdCssd1FakN7Bc0hVNmEyGq1bq3RgfkCb3cmQLpNPOroA=="
@@ -1339,6 +1351,8 @@
         "npm:@tauri-apps/cli@^2.11.3",
         "npm:@tauri-apps/plugin-dialog@^2.7.1",
         "npm:@tauri-apps/plugin-opener@^2.5.4",
+        "npm:dompurify@^3.4.12",
+        "npm:marked@^18.0.6",
         "npm:paneforge@^1.0.2",
         "npm:svelte-check@^4.7.1",
         "npm:svelte@^5.56.4",

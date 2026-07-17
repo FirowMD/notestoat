@@ -34,6 +34,8 @@ const EncodingSchema = z.enum([
   'windows-1252'
 ] as const);
 
+const MarkdownViewModeSchema = z.enum(['edit', 'split', 'preview'] as const);
+
 const PartialAppConfigSchema = z.object({
   colorscheme: ThemeSchema.optional().catch(undefined),
   monaco_editor_theme: z.string().trim().min(1).max(128).optional().catch(undefined),
@@ -42,6 +44,7 @@ const PartialAppConfigSchema = z.object({
   font_size: z.number().int().min(8).max(72).optional().catch(undefined),
   word_wrap: z.boolean().optional().catch(undefined),
   show_invisibles: z.boolean().optional().catch(undefined),
+  markdown_view_mode: MarkdownViewModeSchema.optional().catch(undefined),
   default_encoding: EncodingSchema.optional().catch(undefined),
   transparent_mode: z.boolean().optional().catch(undefined),
   window_opacity: z.number().min(0.1).max(1).optional().catch(undefined)
@@ -56,6 +59,7 @@ export function createDefaultAppConfig(): AppConfig {
     font_size: 14,
     word_wrap: false,
     show_invisibles: false,
+    markdown_view_mode: 'split',
     default_encoding: 'utf-8',
     transparent_mode: false,
     window_opacity: 0.85

@@ -17,6 +17,8 @@
     "@tauri-apps/plugin-dialog": "^2.7.1",
     "@tauri-apps/plugin-opener": "^2.5.4",
     "@tailwindcss/vite": "^4.3.1",
+    "dompurify": "^3.4.12",
+    "marked": "^18.0.6",
     "paneforge": "^1.0.2",
     "tailwindcss": "^4.3.1",
     "zod": "^4.4.3"

@@ -1,5 +1,6 @@
 import { writable } from 'svelte/store';
 import { configStore } from './configStore';
+import type { MarkdownViewMode } from '../types/config';
 
 interface EditorState {
   cursor: {
@@ -16,6 +17,7 @@ interface EditorState {
   wordWrap: boolean;
   showInvisibles: boolean;
   fontSize: number;
+  markdownViewMode: MarkdownViewMode;
 }
 
 function createEditorStore() {
@@ -27,7 +29,8 @@ function createEditorStore() {
     lineEnding: 'CRLF',
     wordWrap: false,
     showInvisibles: false,
-    fontSize: 14
+    fontSize: 14,
+    markdownViewMode: 'split'
   });
 
   return {
@@ -59,6 +62,13 @@ function createEditorStore() {
       update(state => {
         configStore.save({ font_size: size });
         return { ...state, fontSize: size };
+      }),
+    setMarkdownViewMode: (mode: MarkdownViewMode, persist = true) =>
+      update(state => {
+        if (persist) {
+          configStore.save({ markdown_view_mode: mode });
+        }
+        return { ...state, markdownViewMode: mode };
       })
   };
 }

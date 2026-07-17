@@ -11,6 +11,7 @@ pub struct GlobalConfig {
     pub font_size: Option<i32>,
     pub word_wrap: Option<bool>,
     pub show_invisibles: Option<bool>,
+    pub markdown_view_mode: Option<String>,
     pub transparent_mode: Option<bool>,
     pub window_opacity: Option<f32>,
 }
@@ -23,6 +24,7 @@ impl Default for GlobalConfig {
             font_size: Some(14),
             word_wrap: Some(false),
             show_invisibles: Some(false),
+            markdown_view_mode: Some("split".to_string()),
             transparent_mode: Some(false),
             window_opacity: Some(0.85),
         }
@@ -53,6 +55,7 @@ pub struct AppConfig {
     pub font_size: Option<i32>,
     pub word_wrap: Option<bool>,
     pub show_invisibles: Option<bool>,
+    pub markdown_view_mode: Option<String>,
     pub transparent_mode: Option<bool>,
     pub window_opacity: Option<f32>,
 }
@@ -67,6 +70,7 @@ impl Default for AppConfig {
             font_size: Some(14),
             word_wrap: Some(false),
             show_invisibles: Some(false),
+            markdown_view_mode: Some("split".to_string()),
             transparent_mode: Some(false),
             window_opacity: Some(0.85),
         }
@@ -85,6 +89,7 @@ impl AppConfig {
             font_size: global.font_size,
             word_wrap: global.word_wrap,
             show_invisibles: global.show_invisibles,
+            markdown_view_mode: global.markdown_view_mode,
             transparent_mode: global.transparent_mode,
             window_opacity: global.window_opacity,
             recent_files: instance.recent_files,
@@ -99,6 +104,7 @@ impl AppConfig {
             font_size: self.font_size,
             word_wrap: self.word_wrap,
             show_invisibles: self.show_invisibles,
+            markdown_view_mode: self.markdown_view_mode.clone(),
             transparent_mode: self.transparent_mode,
             window_opacity: self.window_opacity,
         }
