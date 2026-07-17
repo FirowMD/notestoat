@@ -1,12 +1,8 @@
 import { writable } from 'svelte/store';
 import { configStore } from './configStore';
+import type { Theme } from '../types/theme';
 
-export type Theme = 
-  | 'Firow'
-  | 'catppuccin' | 'cerberus' | 'concord' | 'crimson' | 'fennec' 
-  | 'hamlindigo' | 'legacy' | 'mint' | 'modern' | 'mona' | 'nosh' 
-  | 'nouveau' | 'pine' | 'reign' | 'rocket' | 'rose' | 'sahara' 
-  | 'seafoam' | 'terminus' | 'vintage' | 'vox' | 'wintry';
+export type { Theme } from '../types/theme';
 
 function createThemeStore() {
   const { subscribe, set } = writable<Theme>('Firow');
@@ -15,7 +11,7 @@ function createThemeStore() {
     subscribe,
     setTheme: (theme: Theme) => {
       document.documentElement.setAttribute('data-theme', theme);
-      configStore.save({ colorscheme: theme });
+      void configStore.save({ colorscheme: theme });
       set(theme);
     },
     loadTheme: (theme: Theme) => {

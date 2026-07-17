@@ -6,7 +6,6 @@
   import { editorStore } from './stores/editor';
   import { fileStore } from './stores/files';
   import { monacoThemeStore } from './stores/monacoTheme';
-  import { configStore } from './stores/configStore';
   import type { MarkdownViewMode } from './types/config';
 
   let editorRef: HTMLDivElement;
@@ -132,8 +131,10 @@
       }
 
       editorStore.setLanguage(activeFile.language);
+      editorStore.setEncoding(activeFile.encoding, false);
       setEditorLanguage(activeFile.language);
       editorStore.setStats(activeFile.content.length, activeFile.content.split('\n').length);
+      editorStore.setCursor(activeFile.cursor.line, activeFile.cursor.column);
 
       if (previousActiveFileId !== $fileStore.activeFileId) {
         editor.setPosition({
@@ -174,10 +175,7 @@
     monacoApi = monaco;
     monacoThemeStore.setMonaco(monaco);
 
-    const config = await configStore.load();
-    const currentTheme = config?.monaco_editor_theme || $monacoThemeStore || 'Firow';
-
-    monacoThemeStore.set(currentTheme);
+    const currentTheme = $monacoThemeStore || 'Firow';
 
     if (
       currentTheme &&
@@ -185,7 +183,7 @@
       currentTheme !== 'vs-dark' &&
       currentTheme !== 'hc-black'
     ) {
-      await monacoThemeStore.setTheme(currentTheme);
+      await monacoThemeStore.setTheme(currentTheme, false);
     }
 
     editor = monaco.editor.create(editorRef, {
@@ -199,7 +197,7 @@
       scrollBeyondLastLine: false,
       renderLineHighlight: 'line',
       lineNumbersMinChars: 3,
-      padding: { top: 12 },
+      padding: { top: 0 },
       minimap: {
         enabled: false
       }

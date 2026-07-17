@@ -1,6 +1,8 @@
-import type { Theme } from '../stores/theme';
+import type { Theme } from './theme';
 
 export type MarkdownViewMode = 'edit' | 'split' | 'preview';
+export const ENCODINGS = ['utf-8', 'utf-16le', 'utf-16be', 'windows-1252'] as const;
+export type Encoding = (typeof ENCODINGS)[number];
 
 export interface AppConfig {
   colorscheme?: Theme;
@@ -11,7 +13,7 @@ export interface AppConfig {
   word_wrap?: boolean;
   show_invisibles?: boolean;
   markdown_view_mode?: MarkdownViewMode;
-  default_encoding?: string;
+  default_encoding?: Encoding;
   transparent_mode?: boolean;
   window_opacity?: number;
 }

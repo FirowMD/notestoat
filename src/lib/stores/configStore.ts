@@ -1,44 +1,65 @@
+import { invoke } from '@tauri-apps/api/core';
 import { writable } from 'svelte/store';
-import { invoke } from "@tauri-apps/api/core";
-import type { AppConfig } from '../types/config';
 import { createDefaultAppConfig, sanitizeAppConfig } from '../schemas/config';
+import type { AppConfig } from '../types/config';
 
 function createConfigStore() {
-  const { subscribe, set, update } = writable<AppConfig>(createDefaultAppConfig());
+  let currentConfig = createDefaultAppConfig();
+  let loadPromise: Promise<AppConfig | null> | null = null;
+  let saveQueue: Promise<void> = Promise.resolve();
+  const { subscribe, set } = writable<AppConfig>(currentConfig);
+
+  function replace(config: AppConfig) {
+    currentConfig = sanitizeAppConfig(config);
+    set(currentConfig);
+  }
+
+  function persist(config: AppConfig): Promise<void> {
+    const snapshot = sanitizeAppConfig(config);
+    saveQueue = saveQueue
+      .catch(() => undefined)
+      .then(() => invoke('save_config', { config: snapshot }))
+      .then(() => undefined)
+      .catch(error => {
+        console.error('Error saving config:', error);
+      });
+    return saveQueue;
+  }
+
+  async function loadFromDisk(): Promise<AppConfig | null> {
+    try {
+      await invoke('load_config');
+      const config = sanitizeAppConfig(await invoke<unknown>('get_config'));
+      replace(config);
+      return config;
+    } catch (error) {
+      console.error('Error loading config:', error);
+      return null;
+    }
+  }
 
   return {
     subscribe,
-    load: async () => {
-      try {
-        await invoke('load_config');
-        const configRaw = await invoke<unknown>('get_config');
-        const config = sanitizeAppConfig(configRaw);
-        set(config);
-        return config;
-      } catch (error) {
-        console.error('Error loading config:', error);
-        return null;
-      }
-    },
-    save: async (updates: Partial<AppConfig>) => {
-      try {
-        update(store => {
-          const newConfig = sanitizeAppConfig({ ...store, ...updates }, store);
-          void invoke('save_config', { config: newConfig }).catch(error => {
-            console.error('Error saving config:', error);
-          });
-          return newConfig;
+
+    load: (force = false): Promise<AppConfig | null> => {
+      if (force || !loadPromise) {
+        const pendingLoad = loadFromDisk();
+        loadPromise = pendingLoad;
+        void pendingLoad.then(config => {
+          if (!config && loadPromise === pendingLoad) loadPromise = null;
         });
-      } catch (error) {
-        console.error('Error saving config:', error);
       }
+      return loadPromise;
     },
-    updateConfig: (config: AppConfig) => {
-      const sanitizedConfig = sanitizeAppConfig(config);
-      set(sanitizedConfig);
-      void invoke('save_config', { config: sanitizedConfig }).catch(error => {
-        console.error('Error saving config:', error);
-      });
+
+    save: (updates: Partial<AppConfig>): Promise<void> => {
+      replace({ ...currentConfig, ...updates });
+      return persist(currentConfig);
+    },
+
+    updateConfig: (config: AppConfig): Promise<void> => {
+      replace(config);
+      return persist(currentConfig);
     }
   };
 }

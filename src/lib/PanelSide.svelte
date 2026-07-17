@@ -1,10 +1,7 @@
 <script lang="ts">
-  import { invoke } from "@tauri-apps/api/core";
   import TabFile from "./elems/TabFile.svelte";
   import { fileStore } from "./stores/files";
-  import type { FileInfo } from './types/file';
   import { Search } from '@lucide/svelte';
-  import { configStore } from './stores/configStore';
 
   $: files = $fileStore.files;
   $: activeFileId = $fileStore.activeFileId;
@@ -30,10 +27,10 @@
 
   <div class="flex-1 overflow-y-auto min-h-0">
     <div class="mt-1 flex flex-col gap-1 w-full pb-12">
-      {#each filteredFiles as file, index (file.id)}
+      {#each filteredFiles as file (file.id)}
         <TabFile 
           {file} 
-          {index}
+          index={files.findIndex(candidate => candidate.id === file.id)}
           isActive={file.id === activeFileId}
           totalFiles={files.length}
         />

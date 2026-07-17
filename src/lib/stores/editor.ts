@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
 import { configStore } from './configStore';
-import type { MarkdownViewMode } from '../types/config';
+import type { Encoding, MarkdownViewMode } from '../types/config';
 
 interface EditorState {
   cursor: {
@@ -12,7 +12,7 @@ interface EditorState {
     lines: number;
   };
   language: string;
-  encoding: string;
+  encoding: Encoding;
   lineEnding: 'CRLF' | 'LF' | 'CR';
   wordWrap: boolean;
   showInvisibles: boolean;
@@ -35,38 +35,52 @@ function createEditorStore() {
 
   return {
     subscribe,
+    hydrate: (config: {
+      fontSize?: number;
+      wordWrap?: boolean;
+      showInvisibles?: boolean;
+      markdownViewMode?: MarkdownViewMode;
+      encoding?: Encoding;
+    }) => update(state => ({
+      ...state,
+      fontSize: config.fontSize ?? state.fontSize,
+      wordWrap: config.wordWrap ?? state.wordWrap,
+      showInvisibles: config.showInvisibles ?? state.showInvisibles,
+      markdownViewMode: config.markdownViewMode ?? state.markdownViewMode,
+      encoding: config.encoding ?? state.encoding
+    })),
     setCursor: (line: number, column: number) => 
       update(state => ({ ...state, cursor: { line, column } })),
     setStats: (length: number, lines: number) => 
       update(state => ({ ...state, stats: { length, lines } })),
     setLanguage: (language: string) => 
       update(state => ({ ...state, language })),
-    setEncoding: (encoding: string) => 
+    setEncoding: (encoding: Encoding, persist = true) =>
       update(state => {
-        configStore.save({ default_encoding: encoding });
+        if (persist) void configStore.save({ default_encoding: encoding });
         return { ...state, encoding };
       }),
     setWordWrap: (enabled: boolean) => 
       update(state => {
-        configStore.save({ word_wrap: enabled });
+        void configStore.save({ word_wrap: enabled });
         return { ...state, wordWrap: enabled };
       }),
     setShowInvisibles: (enabled: boolean) => 
       update(state => {
-        configStore.save({ show_invisibles: enabled });
+        void configStore.save({ show_invisibles: enabled });
         return { ...state, showInvisibles: enabled };
       }),
     setLineEnding: (ending: 'CRLF' | 'LF' | 'CR') =>
       update(state => ({ ...state, lineEnding: ending })),
     setFontSize: (size: number) => 
       update(state => {
-        configStore.save({ font_size: size });
+        void configStore.save({ font_size: size });
         return { ...state, fontSize: size };
       }),
     setMarkdownViewMode: (mode: MarkdownViewMode, persist = true) =>
       update(state => {
         if (persist) {
-          configStore.save({ markdown_view_mode: mode });
+          void configStore.save({ markdown_view_mode: mode });
         }
         return { ...state, markdownViewMode: mode };
       })

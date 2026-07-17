@@ -1,38 +1,11 @@
 import { z } from 'zod';
 import type { AppConfig } from '../types/config';
+import { ENCODINGS } from '../types/config';
+import { THEMES } from '../types/theme';
 
-const ThemeSchema = z.enum([
-  'Firow',
-  'catppuccin',
-  'cerberus',
-  'concord',
-  'crimson',
-  'fennec',
-  'hamlindigo',
-  'legacy',
-  'mint',
-  'modern',
-  'mona',
-  'nosh',
-  'nouveau',
-  'pine',
-  'reign',
-  'rocket',
-  'rose',
-  'sahara',
-  'seafoam',
-  'terminus',
-  'vintage',
-  'vox',
-  'wintry'
-] as const);
+const ThemeSchema = z.enum(THEMES);
 
-const EncodingSchema = z.enum([
-  'utf-8',
-  'utf-16le',
-  'utf-16be',
-  'windows-1252'
-] as const);
+const EncodingSchema = z.enum(ENCODINGS);
 
 const MarkdownViewModeSchema = z.enum(['edit', 'split', 'preview'] as const);
 
@@ -52,7 +25,7 @@ const PartialAppConfigSchema = z.object({
 
 export function createDefaultAppConfig(): AppConfig {
   return {
-    colorscheme: 'cerberus',
+    colorscheme: 'Firow',
     monaco_editor_theme: 'Firow',
     recent_files: [],
     opened_files: [],
