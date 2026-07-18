@@ -3,8 +3,8 @@
   import { listen } from '@tauri-apps/api/event';
   import { getCurrentWebview } from '@tauri-apps/api/webview';
   import { getCurrentWindow } from '@tauri-apps/api/window';
+  import { FileUp } from '@lucide/svelte';
   import { onMount } from 'svelte';
-  import { Pane, PaneGroup, PaneResizer } from 'paneforge';
   import NotificationContainer from './NotificationContainer.svelte';
   import PanelEditor from './PanelEditor.svelte';
   import PanelSide from './PanelSide.svelte';
@@ -18,6 +18,50 @@
   import { themeStore } from './stores/theme';
 
   let isDragging = false;
+  let contentRef: HTMLDivElement;
+  let sidebarPercent = 22;
+  let isResizingSidebar = false;
+
+  $: sidebarStyle = 'flex-basis: ' + sidebarPercent + '%';
+
+  function updateSidebarWidth(clientX: number) {
+    if (!contentRef) return;
+    const bounds = contentRef.getBoundingClientRect();
+    const nextPercent = ((clientX - bounds.left) / bounds.width) * 100;
+    sidebarPercent = Math.max(18, Math.min(38, nextPercent));
+  }
+
+  function handleSidebarResizeMove(event: PointerEvent) {
+    updateSidebarWidth(event.clientX);
+  }
+
+  function stopSidebarResize() {
+    isResizingSidebar = false;
+    window.removeEventListener('pointermove', handleSidebarResizeMove);
+    window.removeEventListener('pointerup', stopSidebarResize);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  }
+
+  function startSidebarResize(event: PointerEvent) {
+    event.preventDefault();
+    isResizingSidebar = true;
+    updateSidebarWidth(event.clientX);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('pointermove', handleSidebarResizeMove);
+    window.addEventListener('pointerup', stopSidebarResize);
+  }
+
+  function handleSidebarResizeKeydown(event: KeyboardEvent) {
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      sidebarPercent = Math.max(18, sidebarPercent - 2);
+    } else if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      sidebarPercent = Math.min(38, sidebarPercent + 2);
+    }
+  }
 
   function handleTabSwitch(event: KeyboardEvent) {
     if (!event.ctrlKey || event.altKey || event.code !== 'Tab') return;
@@ -108,36 +152,50 @@
     return () => {
       disposed = true;
       window.removeEventListener('keydown', handleTabSwitch);
+      stopSidebarResize();
       cleanups.forEach(cleanup => cleanup());
     };
   });
 </script>
 
 <div
-  class="preset-gradient flex flex-col w-full h-full relative"
+  class="relative flex h-full w-full flex-col overflow-hidden bg-surface-950"
   style="opacity: var(--overlayOpacity, 1)"
   role="presentation"
 >
   <PanelTop />
-  <PaneGroup direction="horizontal" class="flex w-full h-full">
+  <div bind:this={contentRef} class="flex min-h-0 w-full flex-1 overflow-hidden">
     {#if $sidePanelStore}
-      <Pane defaultSize={20} minSize={20}>
+      <div class="min-h-0 min-w-0 shrink-0" style={sidebarStyle}>
         <PanelSide />
-      </Pane>
-      <PaneResizer class="preset-glass w-1 hover:bg-primary-500/40 transition-all duration-200 cursor-col-resize" />
+      </div>
+      <!-- svelte-ignore a11y_no_noninteractive_tabindex a11y_no_noninteractive_element_interactions -->
+      <div
+        class="relative z-20 w-1 shrink-0 cursor-col-resize bg-surface-800 transition-colors duration-150 after:absolute after:inset-y-0 after:-inset-x-1 after:content-[''] hover:bg-primary-500 focus-visible:bg-primary-500 focus-visible:outline-none {isResizingSidebar ? 'bg-primary-500' : ''}"
+        role="separator"
+        aria-label="Resize files panel"
+        aria-orientation="vertical"
+        aria-valuemin="18"
+        aria-valuemax="38"
+        aria-valuenow={Math.round(sidebarPercent)}
+        tabindex="0"
+        onpointerdown={startSidebarResize}
+        onkeydown={handleSidebarResizeKeydown}
+      ></div>
     {/if}
-    <Pane defaultSize={$sidePanelStore ? 80 : 100} minSize={30}>
+    <main class="min-h-0 min-w-0 flex-1">
       <PanelEditor />
-    </Pane>
-  </PaneGroup>
+    </main>
+  </div>
 
   {#if isDragging}
     <div
-      class="absolute inset-0 bg-surface-900/80 flex items-center justify-center"
+      class="absolute inset-0 z-100 flex items-center justify-center bg-surface-950/85 p-4 backdrop-blur-sm"
       role="presentation"
     >
-      <div class="w-96 text-center">
-        <p class="text-lg">Drop file to open</p>
+      <div class="flex size-full max-h-72 max-w-xl flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-primary-400/70 bg-surface-900/80 text-center text-surface-200">
+        <FileUp size={30} class="text-primary-300" />
+        <p class="m-0 text-sm font-semibold">Drop files to open</p>
       </div>
     </div>
   {/if}

@@ -1,8 +1,9 @@
 <script lang="ts">
   import EasyMonacoEditor from '@cloudparker/easy-monaco-editor-svelte';
-  import { Columns2, Eye, FileText, Pencil } from '@lucide/svelte';
+  import { Columns2, Eye, FilePlus, FileText, FolderOpen, Pencil } from '@lucide/svelte';
   import { onDestroy, onMount } from 'svelte';
   import MarkdownPreview from './MarkdownPreview.svelte';
+  import { documentService } from './documents/documentService';
   import { editorStore } from './stores/editor';
   import { fileStore } from './stores/files';
   import { monacoThemeStore } from './stores/monacoTheme';
@@ -65,8 +66,8 @@
     setTimeout(() => editor?.layout(), 0);
   }
 
-  function getViewButtonClass(mode: MarkdownViewMode): string {
-    const stateClass = viewMode === mode
+  function getViewButtonClass(isActive: boolean): string {
+    const stateClass = isActive
       ? 'bg-primary-700 text-primary-50'
       : 'bg-transparent text-surface-400 hover:bg-surface-700/50 hover:text-surface-100';
     return `${viewButtonBaseClass} ${stateClass}`;
@@ -317,7 +318,7 @@
       >
         <button
           type="button"
-          class={getViewButtonClass('edit')}
+          class={getViewButtonClass(viewMode === 'edit')}
           aria-pressed={viewMode === 'edit'}
           onclick={() => setViewMode('edit')}
           title="Edit Markdown"
@@ -327,7 +328,7 @@
         </button>
         <button
           type="button"
-          class={getViewButtonClass('split')}
+          class={getViewButtonClass(viewMode === 'split')}
           aria-pressed={viewMode === 'split'}
           onclick={() => setViewMode('split')}
           title="Split editor and preview"
@@ -337,7 +338,7 @@
         </button>
         <button
           type="button"
-          class={getViewButtonClass('preview')}
+          class={getViewButtonClass(viewMode === 'preview')}
           aria-pressed={viewMode === 'preview'}
           onclick={() => setViewMode('preview')}
           title="Preview Markdown (Ctrl+Shift+V)"
@@ -350,7 +351,7 @@
   {/if}
 
   <div
-    class="flex min-h-0 min-w-0 flex-1 overflow-hidden max-[680px]:flex-col"
+    class="flex min-h-0 min-w-0 flex-1 overflow-hidden max-[680px]:flex-col {activeFile ? '' : 'invisible pointer-events-none'}"
     bind:this={workspaceRef}
   >
     <section
@@ -397,28 +398,43 @@
     {/if}
   </div>
 
-  <div
-    class="flex min-h-6 items-center justify-between gap-4 border-t border-primary-400/35 bg-primary-900 px-[0.65rem] text-[0.7rem] text-primary-50"
-  >
-    <div class="flex min-w-0 items-center">
-      <span class="whitespace-nowrap uppercase">{$editorStore.language}</span>
-      <span
-        class="ml-[0.7rem] whitespace-nowrap border-l border-primary-200/35 pl-[0.7rem] max-[680px]:hidden"
-      >{$editorStore.stats.lines} lines</span>
-      <span
-        class="ml-[0.7rem] whitespace-nowrap border-l border-primary-200/35 pl-[0.7rem] max-[680px]:hidden"
-      >{$editorStore.stats.length} characters</span>
+  {#if !activeFile}
+    <div class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-surface-950 px-6 text-center">
+      <img src="/icon.png" alt="" class="mb-4 size-11 rounded-md opacity-90" />
+      <h2 class="m-0 text-base font-semibold text-surface-100">No file open</h2>
+      <div class="mt-5 flex items-center gap-2">
+        <button
+          type="button"
+          class="inline-flex h-8 items-center gap-2 rounded-[5px] border border-primary-500/45 bg-primary-800/55 px-3 text-xs text-primary-50 hover:bg-primary-700/65 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-400"
+          onclick={() => documentService.createUntitled()}
+        >
+          <FilePlus size={15} />
+          <span>New file</span>
+        </button>
+        <button
+          type="button"
+          class="inline-flex h-8 items-center gap-2 rounded-[5px] border border-surface-500/40 bg-surface-900 px-3 text-xs text-surface-200 hover:bg-surface-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-400"
+          onclick={() => documentService.openFromDialog()}
+        >
+          <FolderOpen size={15} />
+          <span>Open file</span>
+        </button>
+      </div>
     </div>
-    <div class="flex min-w-0 items-center">
-      <span class="whitespace-nowrap max-[680px]:hidden"
-        >Ln {$editorStore.cursor.line}, Col {$editorStore.cursor.column}</span
-      >
-      <span
-        class="ml-[0.7rem] whitespace-nowrap border-l border-primary-200/35 pl-[0.7rem] max-[680px]:hidden"
-      >{$editorStore.lineEnding}</span>
-      <span
-        class="ml-[0.7rem] whitespace-nowrap border-l border-primary-200/35 pl-[0.7rem] uppercase"
-      >{$editorStore.encoding}</span>
+  {:else}
+    <div
+      class="flex min-h-6 items-center justify-between gap-4 border-t border-surface-500/30 bg-surface-900 px-[0.65rem] text-[0.68rem] text-surface-400"
+    >
+      <div class="flex min-w-0 items-center gap-3">
+        <span class="whitespace-nowrap font-semibold text-surface-300 uppercase">{$editorStore.language}</span>
+        <span class="whitespace-nowrap max-[680px]:hidden">{$editorStore.stats.lines} lines</span>
+        <span class="whitespace-nowrap max-[680px]:hidden">{$editorStore.stats.length} characters</span>
+      </div>
+      <div class="flex min-w-0 items-center gap-3">
+        <span class="whitespace-nowrap max-[680px]:hidden">Ln {$editorStore.cursor.line}, Col {$editorStore.cursor.column}</span>
+        <span class="whitespace-nowrap max-[680px]:hidden">{$editorStore.lineEnding}</span>
+        <span class="whitespace-nowrap uppercase">{$editorStore.encoding}</span>
+      </div>
     </div>
-  </div>
+  {/if}
 </div>

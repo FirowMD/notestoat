@@ -1,11 +1,13 @@
 import hljs from "highlight.js/lib/common";
+// @ts-types="highlight.js"
 import batch from "highlight.js/lib/languages/dos";
+// @ts-types="highlight.js"
 import powershell from "highlight.js/lib/languages/powershell";
 import type { LanguageFn } from "highlight.js";
 import { Marked } from "marked";
 import { markedHighlight } from "marked-highlight";
 
-hljs.registerLanguage("batch", batch);
+hljs.registerLanguage("batch", batch as unknown as LanguageFn);
 // The bundled grammar uses a supported RegExp keyword pattern that is missing
 // from Highlight.js's public LanguageFn type.
 hljs.registerLanguage("powershell", powershell as unknown as LanguageFn);
