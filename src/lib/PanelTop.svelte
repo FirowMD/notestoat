@@ -1,534 +1,597 @@
 <script lang="ts">
-  import { FilePlus, FolderOpen, Save, WrapText, Eye, Palette, Code, RotateCcw, Info, PanelLeftClose, PanelLeft, FileCode, Clock, Droplet } from "@lucide/svelte";
-  import { documentService } from './documents/documentService';
-  import { editorStore } from './stores/editor';
-  import { themeStore } from './stores/theme';
-  import type { Theme } from './stores/theme';
-  import { fileStore } from './stores/files';
-  import { sidePanelStore } from './stores/sidePanelStore';
-  import { monacoThemeStore } from './stores/monacoTheme';
-  import { availableLanguages } from './stores/language';
-  import { configStore } from './stores/configStore';
-  import { message } from '@tauri-apps/plugin-dialog';
+  import {
+    Clock,
+    FilePlus,
+    FileText,
+    FolderOpen,
+    PanelLeft,
+    PanelLeftClose,
+    RotateCcw,
+    Save,
+    Settings2
+  } from '@lucide/svelte';
   import { onMount } from 'svelte';
-  import { ENCODINGS, type Encoding } from './types/config';
-  import { THEMES } from './types/theme';
-  
+  import SettingsPanel from './SettingsPanel.svelte';
+  import { documentService } from './documents/documentService';
+  import { configStore } from './stores/configStore';
+  import { editorStore } from './stores/editor';
+  import { fileStore } from './stores/files';
+  import { monacoThemeStore } from './stores/monacoTheme';
+  import { sidePanelStore } from './stores/sidePanelStore';
 
-  $: wordWrap = $editorStore.wordWrap;
-  $: showInvisibles = $editorStore.showInvisibles;
-  $: language = $editorStore.language;
-  $: fontSize = $editorStore.fontSize;
-  $: isSidePanelVisible = $sidePanelStore;
-  $: monacoTheme = $monacoThemeStore;
-  $: recentFiles = ($configStore.recent_files || []).slice(0, 10);
-
-  let isFontSizeMenuOpen = false;
-  const fontSizes = [8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24, 26, 28, 30, 32];
-  let isRecentFilesMenuOpen = false;
+  let isRecentFilesOpen = false;
+  let isSettingsOpen = false;
   let selectedRecentIndex = 0;
-  let recentFilesMenu: HTMLDivElement;
-
-  function handleFontSizeChange(size: number) {
-    editorStore.setFontSize(size);
-    isFontSizeMenuOpen = false;
-  }
-
-  let isLanguageMenuOpen = false;
-
-  function handleLanguageChange(lang: string) {
-    editorStore.setLanguage(lang);
-    if ($fileStore.activeFileId) {
-      fileStore.updateFile($fileStore.activeFileId, {
-        language: lang
-      });
-    }
-    isLanguageMenuOpen = false;
-  }
-
-  const themes = THEMES;
-
-  let isThemeMenuOpen = false;
-  let isMonacoThemeMenuOpen = false;
+  let recentPanel: HTMLDivElement;
+  let recentButton: HTMLButtonElement;
+  let settingsContainer: HTMLDivElement;
+  let settingsButton: HTMLButtonElement;
   let availableMonacoThemes: string[] = ['vs', 'vs-dark', 'hc-black', 'Firow'];
 
-  let isOpacityMenuOpen = false;
-  let opacityPercent = 85;
-  $: if ($configStore.window_opacity !== undefined) {
-    opacityPercent = Math.round(($configStore.window_opacity || 0.85) * 100);
-  }
-
-  function toggleTransparentMode() {
-    isOpacityMenuOpen = !isOpacityMenuOpen;
-  }
-
-  function applyOpacityFromPercent(percent: number) {
-    const clamped = Math.max(10, Math.min(100, Math.round(percent)));
-    const nextOpacity = clamped / 100;
-    try {
-      document.documentElement.style.setProperty('--overlayOpacity', String(nextOpacity));
-    } catch {}
-    const enableTransparent = nextOpacity < 1;
-    void configStore.save({
-      window_opacity: nextOpacity,
-      transparent_mode: enableTransparent
-    });
-    opacityPercent = clamped;
-  }
+  $: activeFile = $fileStore.files.find(file => file.id === $fileStore.activeFileId);
+  $: hasDocumentToolbar = Boolean(
+    activeFile && (
+      activeFile.language === 'markdown' ||
+      /\.(md|markdown|mdown|mkdn)$/i.test(activeFile.name)
+    )
+  );
+  $: recentFiles = ($configStore.recent_files ?? []).slice(0, 10);
 
   function handleNewFile() {
     documentService.createUntitled();
-  }
-
-  async function handleCloseActiveFile() {
-    if ($fileStore.activeFileId) await documentService.closeDocument($fileStore.activeFileId);
   }
 
   async function handleOpenFile() {
     await documentService.openFromDialog();
   }
 
-  function openRecentFilesMenu() {
-    isRecentFilesMenuOpen = true;
+  async function handleSaveFile() {
+    if (activeFile) await documentService.saveDocument(activeFile.id);
+  }
+
+  async function handleCloseActiveFile() {
+    if (activeFile) await documentService.closeDocument(activeFile.id);
+  }
+
+  function toggleRecentFiles() {
+    isRecentFilesOpen = !isRecentFilesOpen;
+    isSettingsOpen = false;
     selectedRecentIndex = 0;
-    setTimeout(() => {
-      if (recentFilesMenu) {
-        recentFilesMenu.focus();
-      }
-    }, 0);
+    if (isRecentFilesOpen) setTimeout(() => recentPanel?.focus(), 0);
   }
 
-  function handleRecentMenuKeydown(event: KeyboardEvent) {
-    if (!isRecentFilesMenuOpen || recentFiles.length === 0) return;
-
-    switch (event.key) {
-      case 'ArrowDown':
-        event.preventDefault();
-        selectedRecentIndex = (selectedRecentIndex + 1) % recentFiles.length;
-        scrollToSelectedItem();
-        break;
-      case 'ArrowUp':
-        event.preventDefault();
-        selectedRecentIndex = (selectedRecentIndex - 1 + recentFiles.length) % recentFiles.length;
-        scrollToSelectedItem();
-        break;
-      case 'Enter':
-        event.preventDefault();
-        if (recentFiles[selectedRecentIndex]) {
-          handleOpenRecentFile(recentFiles[selectedRecentIndex]);
-        }
-        break;
-      case 'Escape':
-        event.preventDefault();
-        isRecentFilesMenuOpen = false;
-        break;
-    }
-  }
-
-  function scrollToSelectedItem() {
-    setTimeout(() => {
-      if (recentFilesMenu) {
-        const selectedElement = recentFilesMenu.querySelector(`[data-index="${selectedRecentIndex}"]`);
-        if (selectedElement) {
-          selectedElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-        }
-      }
-    }, 0);
+  function toggleSettings() {
+    isSettingsOpen = !isSettingsOpen;
+    isRecentFilesOpen = false;
   }
 
   async function handleOpenRecentFile(filePath: string) {
     await documentService.openRecentFile(filePath);
-    isRecentFilesMenuOpen = false;
-  }
-
-  async function handleSaveFile() {
-    if ($fileStore.activeFileId) await documentService.saveDocument($fileStore.activeFileId);
+    isRecentFilesOpen = false;
   }
 
   async function handleRestoreFile() {
     await documentService.restoreRecentFile();
+    isRecentFilesOpen = false;
   }
 
-  async function handleAbout() {
-    await message('NoteStoat v.0.4.1', 'About');
-  }
-
-
-  $: windowTitle = (() => {
-    const activeFile = $fileStore.files.find(f => f.id === $fileStore.activeFileId);
-    if (activeFile) {
-      const fileName = activeFile.name || 'Untitled';
-      const modifiedIndicator = activeFile.isModified ? ' •' : '';
-      return `${fileName}${modifiedIndicator}`;
+  function handleRecentMenuKeydown(event: KeyboardEvent) {
+    if (!isRecentFilesOpen) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      isRecentFilesOpen = false;
+      recentButton?.focus();
+      return;
     }
-    return 'NoteStoat';
-  })();
+    if (recentFiles.length === 0) return;
 
-  
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      selectedRecentIndex = (selectedRecentIndex + 1) % recentFiles.length;
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      selectedRecentIndex = (selectedRecentIndex - 1 + recentFiles.length) % recentFiles.length;
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      void handleOpenRecentFile(recentFiles[selectedRecentIndex]);
+    } else {
+      return;
+    }
+
+    setTimeout(() => {
+      recentPanel
+        ?.querySelector('[data-index="' + selectedRecentIndex + '"]')
+        ?.scrollIntoView({ block: 'nearest' });
+    }, 0);
+  }
+
+  function handleGlobalPointerDown(event: PointerEvent) {
+    const target = event.target as Node;
+    if (
+      isRecentFilesOpen &&
+      !recentPanel?.contains(target) &&
+      !recentButton?.contains(target)
+    ) {
+      isRecentFilesOpen = false;
+    }
+    if (
+      isSettingsOpen &&
+      !settingsContainer?.contains(target) &&
+      !settingsButton?.contains(target)
+    ) {
+      isSettingsOpen = false;
+    }
+  }
 
   function handleKeydown(event: KeyboardEvent) {
-    if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.code === 'KeyN') {
+    if (event.key === 'Escape' && (isRecentFilesOpen || isSettingsOpen)) {
+      event.preventDefault();
+      isRecentFilesOpen = false;
+      isSettingsOpen = false;
+      return;
+    }
+
+    const primary = event.ctrlKey || event.metaKey;
+    if (primary && !event.shiftKey && event.code === 'KeyN') {
       event.preventDefault();
       handleNewFile();
-    } else if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.code === 'KeyO') {
+    } else if (primary && !event.shiftKey && event.code === 'KeyO') {
       event.preventDefault();
-      handleOpenFile();
-    } else if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.code === 'KeyS') {
+      void handleOpenFile();
+    } else if (primary && !event.shiftKey && event.code === 'KeyS') {
       event.preventDefault();
-      handleSaveFile();
-    } else if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.code === 'KeyR') {
+      void handleSaveFile();
+    } else if (primary && !event.shiftKey && event.code === 'KeyR') {
       event.preventDefault();
-      openRecentFilesMenu();
-    } else if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.code === 'KeyT') {
+      toggleRecentFiles();
+    } else if (primary && event.shiftKey && event.code === 'KeyT') {
       event.preventDefault();
-      handleRestoreFile();
-    } else if (event.altKey && !event.ctrlKey && !event.shiftKey && event.code === 'KeyZ') {
+      void handleRestoreFile();
+    } else if (event.altKey && !primary && !event.shiftKey && event.code === 'KeyZ') {
       event.preventDefault();
-      editorStore.setWordWrap(!wordWrap);
-    } else if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.code === 'KeyW') {
+      editorStore.setWordWrap(!$editorStore.wordWrap);
+    } else if (primary && !event.shiftKey && event.code === 'KeyW') {
       event.preventDefault();
-      handleCloseActiveFile();
-    } else if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.code === 'KeyB') {
+      void handleCloseActiveFile();
+    } else if (primary && !event.shiftKey && event.code === 'KeyB') {
       event.preventDefault();
       sidePanelStore.toggle();
     }
   }
 
-  const encodings = ENCODINGS;
-
-  let isEncodingMenuOpen = false;
-
-  async function handleEncodingChange(encoding: Encoding) {
-    if ($fileStore.activeFileId) {
-      await documentService.changeEncoding($fileStore.activeFileId, encoding);
-    } else {
-      editorStore.setEncoding(encoding);
-    }
-    isEncodingMenuOpen = false;
-  }
-
   onMount(() => {
     window.addEventListener('keydown', handleKeydown);
-    
-    // Load available Monaco themes
-    monacoThemeStore.getAvailableThemes().then(themes => {
-      availableMonacoThemes = themes;
-    }).catch(error => {
-      console.error('Error loading Monaco themes:', error);
-    });
-    
+    window.addEventListener('pointerdown', handleGlobalPointerDown);
+
+    monacoThemeStore.getAvailableThemes()
+      .then(themes => {
+        availableMonacoThemes = themes;
+      })
+      .catch(error => {
+        console.error('Error loading Monaco themes:', error);
+      });
+
     return () => {
       window.removeEventListener('keydown', handleKeydown);
+      window.removeEventListener('pointerdown', handleGlobalPointerDown);
     };
   });
 </script>
 
-<div class="flex flex-col w-full z-50">
-  <div class="flex flex-row w-full min-h-[22px] max-h-[22px] items-center preset-gradient-one shadow-xl"
-       role="toolbar" tabindex="0"
-  >
-    <div class="flex-1 px-3 text-sm font-medium select-none truncate">
-      {windowTitle}
+<header class="app-header" role="toolbar" aria-label="Application toolbar">
+  <div class="action-group">
+    <button
+      type="button"
+      class="toolbar-button"
+      class:active={$sidePanelStore}
+      onclick={() => sidePanelStore.toggle()}
+      title="Toggle files panel (Ctrl+B)"
+    >
+      {#if $sidePanelStore}
+        <PanelLeftClose size={17} />
+      {:else}
+        <PanelLeft size={17} />
+      {/if}
+    </button>
+
+    <span class="toolbar-divider"></span>
+
+    <button type="button" class="toolbar-button" onclick={handleNewFile} title="New file (Ctrl+N)">
+      <FilePlus size={17} />
+    </button>
+    <button type="button" class="toolbar-button" onclick={handleOpenFile} title="Open file (Ctrl+O)">
+      <FolderOpen size={17} />
+    </button>
+    <button
+      type="button"
+      class="toolbar-button"
+      onclick={handleSaveFile}
+      disabled={!activeFile}
+      title="Save (Ctrl+S)"
+    >
+      <Save size={17} />
+    </button>
+  </div>
+
+  <div class="document-identity">
+    <img src="/icon.png" alt="" />
+    <div>
+      <div class="document-name">
+        <span>{activeFile?.name ?? 'NoteStoat'}</span>
+        {#if activeFile?.isModified}
+          <span class="modified-dot" title="Unsaved changes"></span>
+        {/if}
+      </div>
+      <div class="document-location">
+        {activeFile?.path || (activeFile ? 'Unsaved document' : 'Ready')}
+      </div>
     </div>
   </div>
-  
-  <div class="flex flex-row w-full min-h-[36px] max-h-[36px] items-center px-2 gap-2 preset-gradient-two">
-  <button 
-    type="button" 
-    class="preset-filled-primary-950-50 btn btn-sm h-7 flex items-center transition-all duration-200 hover:scale-105"
-    onclick={handleNewFile}
-    title="New (Ctrl+N)"
-  >
-    <FilePlus size={14} />
-  </button>
-  <button 
-    type="button" 
-    class="preset-filled-primary-950-50 btn btn-sm h-7 flex items-center transition-all duration-200 hover:scale-105"
-    onclick={handleOpenFile}
-    title="Open (Ctrl+O)"
-  >
-    <FolderOpen size={14} />
-  </button>
-  <button 
-    type="button" 
-    class="preset-filled-primary-950-50 btn btn-sm h-7 flex items-center transition-all duration-200 hover:scale-105"
-    onclick={handleSaveFile}
-    title="Save (Ctrl+S)"
-  >
-    <Save size={14} />
-  </button>
-  <div class="relative">
-    <button 
-      type="button" 
-      class="btn btn-sm h-7 flex items-center { (isRecentFilesMenuOpen ? 'preset-tonal-primary' : 'preset-filled-primary-950-50') } transition-all duration-200 hover:scale-105"
-      onclick={openRecentFilesMenu}
-      title="Recent (Ctrl+R)"
+
+  <div class="action-group action-group-right">
+    <button
+      bind:this={recentButton}
+      type="button"
+      class="toolbar-button"
+      class:active={isRecentFilesOpen}
+      onclick={toggleRecentFiles}
+      title="Recent files (Ctrl+R)"
+      aria-haspopup="menu"
+      aria-expanded={isRecentFilesOpen}
     >
-      <Clock size={14} />
+      <Clock size={17} />
     </button>
-    {#if isRecentFilesMenuOpen}
-      <div 
-        bind:this={recentFilesMenu}
-        role="menu"
-        tabindex="-1"
-        class="absolute left-0 top-full mt-1 w-96 preset-filled-primary-950-50 rounded-none shadow-xl z-50 max-h-64 overflow-y-auto focus:outline-none"
-        onmouseleave={() => isRecentFilesMenuOpen = false}
-        onkeydown={handleRecentMenuKeydown}
-      >
-        {#if recentFiles.length > 0}
+    <button
+      bind:this={settingsButton}
+      type="button"
+      class="toolbar-button"
+      class:active={isSettingsOpen}
+      onclick={toggleSettings}
+      title="Settings"
+      aria-haspopup="dialog"
+      aria-expanded={isSettingsOpen}
+    >
+      <Settings2 size={17} />
+    </button>
+  </div>
+
+  {#if isRecentFilesOpen}
+    <div
+      bind:this={recentPanel}
+      class="recent-panel"
+      role="menu"
+      tabindex="-1"
+      aria-label="Recent files"
+      onkeydown={handleRecentMenuKeydown}
+    >
+      <div class="popover-heading">
+        <span>Recent files</span>
+        <span>{recentFiles.length}</span>
+      </div>
+
+      <div class="recent-list">
+        {#if recentFiles.length}
           {#each recentFiles as filePath, index}
             {@const fileName = filePath.split(/[/\\]/).pop() || filePath}
             <button
-              role="menuitem"
               type="button"
+              role="menuitem"
               data-index={index}
-              class="text-xs w-full text-left btn preset-filled-primary-950-50 rounded-none"
+              class:selected={selectedRecentIndex === index}
               onclick={() => handleOpenRecentFile(filePath)}
               onmouseenter={() => selectedRecentIndex = index}
             >
-              <span class="font-medium">{fileName}</span>
-              <span class="text-[10px] truncate">{filePath}</span>
+              <FileText size={15} />
+              <span>
+                <strong>{fileName}</strong>
+                <small>{filePath}</small>
+              </span>
             </button>
           {/each}
         {:else}
-          <div class="text-xs px-3 py-2 text-surface-400">
-            No recent files
-          </div>
+          <div class="recent-empty">No recent files</div>
         {/if}
       </div>
-    {/if}
-  </div>
-  <div class="w-px h-6 mx-1 bg-primary-100"></div>
-  <button 
-    type="button" 
-    class="preset-filled-primary-950-50 btn btn-sm h-7 flex items-center transition-all duration-200 hover:scale-105"
-    onclick={handleRestoreFile}
-    title="Restore (Ctrl+Shift+T)"
-  >
-    <RotateCcw size={14} />
-  </button>
-  <button 
-    type="button" 
-    class="btn btn-sm h-7 flex items-center { (wordWrap ? 'preset-tonal-primary' : 'preset-filled-primary-950-50') } transition-all duration-200 hover:scale-105"
-    onclick={() => editorStore.setWordWrap(!wordWrap)}
-    title="Word Wrap (Alt+Z)"
-  >
-    <WrapText size={14} />
-  </button>
-  <button 
-    type="button" 
-    class="btn btn-sm h-7 flex items-center { (showInvisibles ? 'preset-tonal-primary' : 'preset-filled-primary-950-50') } transition-all duration-200 hover:scale-105"
-    onclick={() => editorStore.setShowInvisibles(!showInvisibles)}
-    title="Show Space Characters"
-  >
-    <Eye size={14} />
-  </button>
-  <div class="w-px h-6 mx-1 bg-primary-100"></div>
-  <div class="relative">
-    <button 
-      type="button" 
-      class="btn btn-sm h-7 flex items-center { (isThemeMenuOpen ? 'preset-tonal-primary' : 'preset-filled-primary-950-50') } transition-all duration-200 hover:scale-105"
-      onclick={() => isThemeMenuOpen = !isThemeMenuOpen}
-      title="Theme"
-    >
-      <Palette size={14} />
-    </button>
-    {#if isThemeMenuOpen}
-      <div 
-        role="menu"
-        tabindex="-1"
-        class="absolute left-0 top-full mt-1 w-64 preset-filled-primary-950-50 rounded-none shadow-xl z-50 max-h-64 overflow-y-auto focus:outline-none"
-        onmouseleave={() => isThemeMenuOpen = false}
-      >
-        {#each themes as theme}
-          <button
-            role="menuitem"
-            type="button"
-            class="text-xs w-full text-left btn preset-filled-primary-950-50 rounded-none capitalize"
-            onclick={() => { themeStore.setTheme(theme as Theme); isThemeMenuOpen = false; }}
-          >
-            {theme}
-          </button>
-        {/each}
+
+      <div class="recent-footer">
+        <button type="button" onclick={handleRestoreFile} disabled={!recentFiles.length}>
+          <RotateCcw size={15} />
+          <span>Restore last closed</span>
+          <kbd>Ctrl Shift T</kbd>
+        </button>
       </div>
-    {/if}
-  </div>
-  <div class="relative">
-    <button 
-      type="button" 
-      class="preset-filled-primary-950-50 btn btn-sm h-7 flex items-center transition-all duration-200 hover:scale-105"
-      onclick={toggleTransparentMode}
-      title="Transparency"
-    >
-      <Droplet size={14} />
-    </button>
-    {#if isOpacityMenuOpen}
-      <div
-        role="menu"
-        tabindex="-1"
-        class="absolute left-0 top-full mt-1 w-64 preset-filled-primary-950-50 rounded-none shadow-xl z-50 p-3 focus:outline-none"
-        onmouseleave={() => isOpacityMenuOpen = false}
-      >
-        <div class="w-full space-y-2">
-          <div class="flex items-center justify-between">
-            <span class="text-xs">Transparency</span>
-            <span class="text-[11px] opacity-70">{opacityPercent}%</span>
-          </div>
-          <input
-            class="input w-full"
-            type="range"
-            min="10"
-            max="100"
-            step="1"
-            bind:value={opacityPercent}
-            oninput={(e) => applyOpacityFromPercent(Number((e.target as HTMLInputElement).value))}
-            aria-label="Window opacity percentage"
-          />
-        </div>
-      </div>
-    {/if}
-  </div>
-  <div class="relative">
-    <button 
-      type="button" 
-      class="btn btn-sm h-7 flex items-center { (isMonacoThemeMenuOpen ? 'preset-tonal-primary' : 'preset-filled-primary-950-50') } transition-all duration-200 hover:scale-105"
-      onclick={() => isMonacoThemeMenuOpen = !isMonacoThemeMenuOpen}
-      title="Monaco Editor Theme"
-    >
-      <FileCode size={14} />
-    </button>
-    {#if isMonacoThemeMenuOpen}
-      <div 
-        role="menu"
-        tabindex="-1"
-        class="absolute left-0 top-full mt-1 w-64 preset-filled-primary-950-50 rounded-none shadow-xl z-50 max-h-64 overflow-y-auto focus:outline-none"
-        onmouseleave={() => isMonacoThemeMenuOpen = false}
-      >
-        {#each availableMonacoThemes as theme}
-          <button
-            role="menuitem"
-            type="button"
-            class="text-xs w-full text-left btn preset-filled-primary-950-50 rounded-none"
-            class:bg-surface-500={monacoTheme === theme}
-            onclick={() => { monacoThemeStore.setTheme(theme); isMonacoThemeMenuOpen = false; }}
-          >
-            {theme}
-          </button>
-        {/each}
-      </div>
-    {/if}
-  </div>
-  <div class="relative">
-    <button 
-      type="button" 
-      class="btn btn-sm h-7 flex items-center gap-2 { (isLanguageMenuOpen ? 'preset-tonal-primary' : 'preset-filled-primary-950-50') } transition-all duration-200 hover:scale-105"
-      onclick={() => isLanguageMenuOpen = !isLanguageMenuOpen}
-      title="Language"
-    >
-      <Code size={14} />
-      <span class="text-xs capitalize">{language}</span>
-    </button>
-    {#if isLanguageMenuOpen}
-      <div 
-        role="menu"
-        tabindex="-1"
-        class="absolute left-0 top-full mt-1 w-64 preset-filled-primary-950-50 rounded-none shadow-xl z-50 max-h-64 overflow-y-auto focus:outline-none"
-        onmouseleave={() => isLanguageMenuOpen = false}
-      >
-        {#each availableLanguages as lang}
-          <button
-            role="menuitem"
-            type="button"
-            class="text-xs w-full text-left btn preset-filled-primary-950-50 rounded-none capitalize"
-            class:bg-surface-500={language === lang}
-            onclick={() => handleLanguageChange(lang)}
-          >
-            {lang}
-          </button>
-        {/each}
-      </div>
-    {/if}
-  </div>
-  <div class="relative">
-    <button 
-      type="button" 
-      class="btn btn-sm h-7 flex items-center gap-2 { (isEncodingMenuOpen ? 'preset-tonal-primary' : 'preset-filled-primary-950-50') } transition-all duration-200 hover:scale-105"
-      onclick={() => isEncodingMenuOpen = !isEncodingMenuOpen}
-      title="Encoding"
-    >
-      <span class="text-xs uppercase">{$editorStore.encoding || 'UTF-8'}</span>
-    </button>
-    {#if isEncodingMenuOpen}
-      <div 
-        role="menu"
-        tabindex="-1"
-        class="absolute left-0 top-full mt-1 w-32 preset-filled-primary-950-50 rounded-none shadow-xl z-50 max-h-64 overflow-y-auto focus:outline-none"
-        onmouseleave={() => isEncodingMenuOpen = false}
-      >
-        {#each encodings as encoding}
-          <button
-            role="menuitem"
-            type="button"
-            class="text-xs w-full text-left btn preset-filled-primary-950-50 rounded-none uppercase"
-            class:bg-surface-500={$editorStore.encoding === encoding}
-            onclick={() => handleEncodingChange(encoding)}
-          >
-            {encoding}
-          </button>
-        {/each}
-      </div>
-    {/if}
-  </div>
-  <div class="relative">
-    <button 
-      type="button" 
-      class="btn btn-sm h-7 flex items-center gap-2 { (isFontSizeMenuOpen ? 'preset-tonal-primary' : 'preset-filled-primary-950-50') } transition-all duration-200 hover:scale-105"
-      onclick={() => isFontSizeMenuOpen = !isFontSizeMenuOpen}
-      title="Font Size"
-    >
-      <span class="text-xs">{fontSize}px</span>
-    </button>
-    {#if isFontSizeMenuOpen}
-      <div 
-        role="menu"
-        tabindex="-1"
-        class="absolute left-0 top-full mt-1 w-32 preset-filled-primary-950-50 rounded-none shadow-xl z-50 max-h-64 overflow-y-auto focus:outline-none"
-        onmouseleave={() => isFontSizeMenuOpen = false}
-      >
-        {#each fontSizes as size}
-          <button
-            role="menuitem"
-            type="button"
-            class="text-xs w-full text-left btn preset-filled-primary-950-50 rounded-none"
-            class:bg-surface-500={fontSize === size}
-            onclick={() => handleFontSizeChange(size)}
-          >
-            {size}px
-          </button>
-        {/each}
-      </div>
-    {/if}
-  </div>
-  <button 
-    type="button" 
-    class="btn btn-sm h-7 flex items-center { (isSidePanelVisible ? 'preset-tonal-primary' : 'preset-filled-primary-950-50') } transition-all duration-200 hover:scale-105"
-    onclick={() => sidePanelStore.toggle()}
-    title="Show/Hide Side Panel (Ctrl+B)"
-  >
-    {#if isSidePanelVisible}
-      <PanelLeftClose size={14} />
-    {:else}
-      <PanelLeft size={14} />
-    {/if}
-  </button>
-  <div class="w-px h-6 mx-1 bg-primary-100"></div>
-  <button
-    type="button"
-    class="preset-filled-primary-950-50 btn btn-sm h-7 flex items-center transition-all duration-200 hover:scale-105"
-    onclick={handleAbout}
-    title="About"
-  >
-    <Info size={14} />
-  </button>
-  </div>
-</div>
+    </div>
+  {/if}
+
+  {#if isSettingsOpen}
+    <div bind:this={settingsContainer} class="settings-anchor">
+      <SettingsPanel
+        {availableMonacoThemes}
+        offsetForDocumentToolbar={hasDocumentToolbar}
+        onClose={() => {
+          isSettingsOpen = false;
+          settingsButton?.focus();
+        }}
+      />
+    </div>
+  {/if}
+</header>
+
+<style>
+  .app-header {
+    position: relative;
+    z-index: 70;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    width: 100%;
+    min-height: 48px;
+    align-items: center;
+    gap: 10px;
+    padding: 0 8px;
+    border-bottom: 1px solid color-mix(in oklab, var(--color-surface-500) 35%, transparent);
+    background: color-mix(in oklab, var(--color-surface-950) 94%, black);
+    color: var(--color-surface-100);
+    box-shadow: 0 1px 0 rgb(0 0 0 / 20%);
+  }
+
+  .settings-anchor {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .settings-anchor :global(.settings-panel) {
+    pointer-events: auto;
+  }
+
+  .action-group {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .toolbar-button {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    place-items: center;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--color-surface-300);
+    cursor: pointer;
+    transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
+  }
+
+  .toolbar-button:hover:not(:disabled) {
+    border-color: color-mix(in oklab, var(--color-surface-500) 35%, transparent);
+    background: var(--color-surface-800);
+    color: var(--color-surface-50);
+  }
+
+  .toolbar-button.active {
+    border-color: color-mix(in oklab, var(--color-primary-500) 45%, transparent);
+    background: color-mix(in oklab, var(--color-primary-700) 45%, var(--color-surface-900));
+    color: var(--color-primary-100);
+  }
+
+  .toolbar-button:disabled {
+    opacity: 0.32;
+    cursor: default;
+  }
+
+  .toolbar-button:focus-visible,
+  .recent-panel button:focus-visible {
+    outline: 2px solid var(--color-primary-400);
+    outline-offset: 1px;
+  }
+
+  .toolbar-divider {
+    width: 1px;
+    height: 20px;
+    margin: 0 4px;
+    background: color-mix(in oklab, var(--color-surface-500) 38%, transparent);
+  }
+
+  .document-identity {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    pointer-events: none;
+  }
+
+  .document-identity img {
+    width: 24px;
+    height: 24px;
+    flex: 0 0 24px;
+    border-radius: 5px;
+  }
+
+  .document-identity > div {
+    min-width: 0;
+  }
+
+  .document-name {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    color: var(--color-surface-100);
+    font-size: 0.78rem;
+    font-weight: 650;
+  }
+
+  .document-name > span:first-child,
+  .document-location {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .document-location {
+    max-width: min(42vw, 440px);
+    margin-top: 1px;
+    color: var(--color-surface-500);
+    font-size: 0.64rem;
+    text-align: center;
+  }
+
+  .modified-dot {
+    width: 6px;
+    height: 6px;
+    flex: 0 0 6px;
+    border-radius: 50%;
+    background: var(--color-warning-500);
+  }
+
+  .recent-panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 48px;
+    z-index: 80;
+    width: min(380px, calc(100vw - 16px));
+    overflow: hidden;
+    border: 1px solid color-mix(in oklab, var(--color-surface-500) 42%, transparent);
+    border-radius: 7px;
+    background: color-mix(in oklab, var(--color-surface-900) 96%, black);
+    box-shadow: 0 18px 48px rgb(0 0 0 / 38%);
+  }
+
+  .popover-heading {
+    display: flex;
+    height: 40px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    border-bottom: 1px solid color-mix(in oklab, var(--color-surface-500) 28%, transparent);
+    color: var(--color-surface-200);
+    font-size: 0.76rem;
+    font-weight: 650;
+  }
+
+  .popover-heading span:last-child {
+    color: var(--color-surface-500);
+    font-size: 0.68rem;
+  }
+
+  .recent-list {
+    max-height: 310px;
+    overflow-y: auto;
+    padding: 5px;
+  }
+
+  .recent-list button {
+    display: grid;
+    width: 100%;
+    grid-template-columns: 20px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--color-surface-400);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .recent-list button:hover,
+  .recent-list button.selected {
+    background: var(--color-surface-800);
+    color: var(--color-surface-100);
+  }
+
+  .recent-list button > span {
+    min-width: 0;
+  }
+
+  .recent-list strong,
+  .recent-list small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .recent-list strong {
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .recent-list small {
+    margin-top: 2px;
+    color: var(--color-surface-500);
+    font-size: 0.62rem;
+  }
+
+  .recent-empty {
+    display: grid;
+    min-height: 100px;
+    place-items: center;
+    color: var(--color-surface-500);
+    font-size: 0.75rem;
+  }
+
+  .recent-footer {
+    padding: 5px;
+    border-top: 1px solid color-mix(in oklab, var(--color-surface-500) 28%, transparent);
+  }
+
+  .recent-footer button {
+    display: grid;
+    width: 100%;
+    min-height: 34px;
+    grid-template-columns: 20px 1fr auto;
+    align-items: center;
+    gap: 7px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--color-surface-300);
+    font-size: 0.72rem;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .recent-footer button:hover:not(:disabled) {
+    background: var(--color-surface-800);
+    color: var(--color-surface-50);
+  }
+
+  .recent-footer button:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  kbd {
+    color: var(--color-surface-500);
+    font-family: inherit;
+    font-size: 0.6rem;
+  }
+
+  @media (max-width: 620px) {
+    .app-header {
+      gap: 4px;
+      padding: 0 5px;
+    }
+
+    .document-identity img,
+    .document-location {
+      display: none;
+    }
+
+    .toolbar-divider {
+      margin: 0 1px;
+    }
+
+    .recent-panel {
+      right: 5px;
+    }
+  }
+</style>
