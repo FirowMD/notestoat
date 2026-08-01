@@ -53,7 +53,7 @@
   }
 
   async function handleAbout() {
-    await message('NoteStoat v0.4.1', { title: 'About NoteStoat' });
+    await message('NoteStoat v0.4.2', { title: 'About NoteStoat' });
   }
 </script>
 
