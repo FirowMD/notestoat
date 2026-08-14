@@ -8,9 +8,8 @@
 }
 
 .markdown-preview {
-  width: min(100%, 54rem);
+  width: 100%;
   min-height: 100%;
-  margin: 0 auto;
   padding: 2.25rem clamp(1.25rem, 4%, 3.25rem) 4rem;
   font-family: var(--base-font-family);
   font-size: 1rem;
