@@ -190,7 +190,7 @@
     monacoApi = monaco;
     monacoThemeStore.setMonaco(monaco);
 
-    const currentTheme = $monacoThemeStore || 'Firow';
+    const currentTheme = $monacoThemeStore || 'vs-dark';
 
     if (
       currentTheme &&
@@ -204,7 +204,7 @@
     editor = monaco.editor.create(editorRef, {
       value: '',
       language: 'markdown',
-      theme: currentTheme || 'Firow',
+      theme: $monacoThemeStore || 'vs-dark',
       fontSize: $editorStore.fontSize,
       fontLigatures: true,
       wordWrap: $editorStore.wordWrap ? 'on' : 'off',

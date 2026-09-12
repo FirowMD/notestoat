@@ -26,7 +26,7 @@
   let recentButton: HTMLButtonElement;
   let settingsContainer: HTMLDivElement;
   let settingsButton: HTMLButtonElement;
-  let availableMonacoThemes: string[] = ['vs', 'vs-dark', 'hc-black', 'Firow'];
+  let availableMonacoThemes: string[] = ['vs', 'vs-dark', 'hc-black'];
 
   $: activeFile = $fileStore.files.find(file => file.id === $fileStore.activeFileId);
   $: hasDocumentToolbar = Boolean(
@@ -186,6 +186,7 @@
       class:active={$sidePanelStore}
       onclick={() => sidePanelStore.toggle()}
       title="Toggle files panel (Ctrl+B)"
+      aria-pressed={$sidePanelStore}
     >
       {#if $sidePanelStore}
         <PanelLeftClose size={17} />
@@ -196,20 +197,22 @@
 
     <span class="toolbar-divider"></span>
 
-    <button type="button" class="toolbar-button" onclick={handleNewFile} title="New file (Ctrl+N)">
-      <FilePlus size={17} />
+    <button type="button" class="toolbar-button labeled-button" onclick={handleNewFile} title="New file (Ctrl+N)" aria-label="New file">
+      <FilePlus size={17} /><span>New file</span>
     </button>
-    <button type="button" class="toolbar-button" onclick={handleOpenFile} title="Open file (Ctrl+O)">
-      <FolderOpen size={17} />
+    <button type="button" class="toolbar-button labeled-button" onclick={handleOpenFile} title="Open file (Ctrl+O)" aria-label="Open file">
+      <FolderOpen size={17} /><span>Open</span>
     </button>
     <button
       type="button"
-      class="toolbar-button"
+      class="toolbar-button labeled-button"
       onclick={handleSaveFile}
       disabled={!activeFile}
       title="Save (Ctrl+S)"
+      aria-label="Save"
     >
       <Save size={17} />
+      <span>Save</span>
     </button>
   </div>
 
@@ -327,11 +330,10 @@
     min-height: 48px;
     align-items: center;
     gap: 10px;
-    padding: 0 8px;
-    border-bottom: 1px solid color-mix(in oklab, var(--color-surface-500) 35%, transparent);
-    background: color-mix(in oklab, var(--color-surface-950) 94%, black);
+    padding: 0 12px;
+    border-bottom: 1px solid var(--chrome-border);
+    background: var(--chrome-panel);
     color: var(--color-surface-100);
-    box-shadow: 0 1px 0 rgb(0 0 0 / 20%);
   }
 
   .settings-anchor {
@@ -347,39 +349,49 @@
   .action-group {
     display: flex;
     align-items: center;
-    gap: 3px;
+    gap: 2px;
   }
 
   .toolbar-button {
     display: grid;
-    width: 32px;
-    height: 32px;
-    flex: 0 0 32px;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
     place-items: center;
     padding: 0;
     border: 1px solid transparent;
-    border-radius: 5px;
+    border-radius: 6px;
     background: transparent;
     color: var(--color-surface-300);
+    font: inherit;
     cursor: pointer;
     transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
   }
 
   .toolbar-button:hover:not(:disabled) {
-    border-color: color-mix(in oklab, var(--color-surface-500) 35%, transparent);
-    background: var(--color-surface-800);
+    background: var(--chrome-raised);
     color: var(--color-surface-50);
   }
 
   .toolbar-button.active {
-    border-color: color-mix(in oklab, var(--color-primary-500) 45%, transparent);
-    background: color-mix(in oklab, var(--color-primary-700) 45%, var(--color-surface-900));
+    background: var(--chrome-selected);
     color: var(--color-primary-100);
   }
 
   .toolbar-button:disabled {
     opacity: 0.32;
     cursor: default;
+  }
+
+  .labeled-button {
+    display: flex;
+    width: auto;
+    flex-basis: auto;
+    align-items: center;
+    gap: 7px;
+    padding: 0 9px;
+    font-size: 0.75rem;
+    font-weight: 500;
   }
 
   .toolbar-button:focus-visible,
@@ -423,7 +435,7 @@
     gap: 7px;
     color: var(--color-surface-100);
     font-size: 0.78rem;
-    font-weight: 650;
+    font-weight: 500;
   }
 
   .document-name > span:first-child,
@@ -436,8 +448,8 @@
   .document-location {
     max-width: min(42vw, 440px);
     margin-top: 1px;
-    color: var(--color-surface-500);
-    font-size: 0.64rem;
+    color: var(--chrome-muted);
+    font-size: 0.67rem;
     text-align: center;
   }
 
@@ -457,8 +469,8 @@
     width: min(380px, calc(100vw - 16px));
     overflow: hidden;
     border: 1px solid color-mix(in oklab, var(--color-surface-500) 42%, transparent);
-    border-radius: 7px;
-    background: color-mix(in oklab, var(--color-surface-900) 96%, black);
+    border-radius: 8px;
+    background: var(--chrome-panel);
     box-shadow: 0 18px 48px rgb(0 0 0 / 38%);
   }
 
@@ -576,6 +588,17 @@
   }
 
   @media (max-width: 620px) {
+    .labeled-button {
+      width: 34px;
+      flex-basis: 34px;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .labeled-button span {
+      display: none;
+    }
+
     .app-header {
       gap: 4px;
       padding: 0 5px;

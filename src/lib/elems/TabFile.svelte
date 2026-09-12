@@ -39,7 +39,7 @@
     const parts = file.path.split(/[/\\]/).filter(Boolean);
     return parts.length > 1 ? parts[parts.length - 2] : 'Saved';
   })();
-  $: secondaryText = parentName + ' - ' + modifiedAt.toLocaleDateString();
+  $: secondaryText = parentName + ' · ' + modifiedAt.toLocaleDateString();
   $: if (isRenaming && inputElement) inputElement.focus();
 
   function handleClick() {
@@ -268,7 +268,9 @@
     onclick={handleClick}
     oncontextmenu={handleContextMenu}
     onpointerdown={handlePointerDown}
-    title={file.path || file.name}
+    title={(file.path || file.name) + (file.isModified ? ' — Unsaved changes' : '')}
+    aria-label={file.name + (file.isModified ? ', unsaved changes' : '')}
+    aria-current={isActive ? 'page' : undefined}
   >
     <span class="file-icon"><FileText size={16} strokeWidth={1.7} /></span>
     <span class="file-copy">
@@ -285,7 +287,6 @@
       {:else}
         <span class="file-name">
           <span>{file.name}</span>
-          {#if file.isModified}<span class="modified-dot" title="Unsaved changes"></span>{/if}
         </span>
       {/if}
       <span class="file-meta">{secondaryText}</span>
@@ -345,11 +346,13 @@
     display: flex;
     width: 100%;
     min-width: 0;
-    min-height: 44px;
+    min-height: 46px;
+    margin-bottom: 2px;
     align-items: stretch;
     overflow: hidden;
     border: 1px solid transparent;
     border-radius: 5px;
+    transition: background 140ms ease, border-color 140ms ease;
   }
 
   .file-row:hover {
@@ -357,17 +360,37 @@
   }
 
   .file-row.active {
-    border-color: color-mix(in oklab, var(--color-primary-500) 28%, transparent);
-    background: color-mix(in oklab, var(--color-primary-800) 24%, var(--color-surface-900));
+    background: var(--chrome-selected);
   }
 
   .file-row.active::before {
     position: absolute;
-    inset: 5px auto 5px 0;
+    inset: 12px auto 12px 0;
     width: 2px;
     border-radius: 2px;
     background: var(--color-primary-400);
     content: '';
+  }
+
+  .file-row.modified {
+    background: color-mix(in oklab, var(--color-warning-500) 10%, var(--chrome-panel));
+  }
+
+  .file-row.modified:hover {
+    background: color-mix(in oklab, var(--color-warning-500) 16%, var(--chrome-panel));
+  }
+
+  .file-row.modified.active {
+    border-color: color-mix(in oklab, var(--color-warning-400) 40%, transparent);
+    background: color-mix(in oklab, var(--color-warning-500) 24%, var(--chrome-panel));
+  }
+
+  .file-row.modified.active:hover {
+    background: color-mix(in oklab, var(--color-warning-500) 28%, var(--chrome-panel));
+  }
+
+  .file-row.modified.active::before {
+    background: var(--color-warning-400);
   }
 
   .file-row.drop-target {
@@ -382,10 +405,10 @@
     display: grid;
     width: 100%;
     min-width: 0;
-    grid-template-columns: 18px minmax(0, 1fr);
+    grid-template-columns: 16px minmax(0, 1fr);
     align-items: center;
-    gap: 5px;
-    padding: 4px 44px 4px 8px;
+    gap: 9px;
+    padding: 6px 58px 6px 10px;
     border: 0;
     background: transparent;
     color: var(--color-surface-300);
@@ -409,7 +432,7 @@
   .file-icon {
     display: grid;
     place-items: center;
-    color: var(--color-surface-500);
+    color: var(--chrome-muted);
   }
 
   .file-icon :global(svg) {
@@ -418,7 +441,11 @@
   }
 
   .active .file-icon {
-    color: var(--color-primary-300);
+    color: var(--color-primary-200);
+  }
+
+  .modified .file-icon {
+    color: var(--color-warning-300);
   }
 
   .file-copy,
@@ -440,9 +467,9 @@
   .file-name {
     align-items: center;
     gap: 6px;
-    color: var(--color-surface-200);
-    font-size: 0.72rem;
-    font-weight: 560;
+    color: var(--color-surface-100);
+    font-size: 0.78rem;
+    font-weight: 400;
   }
 
   .file-name > span:first-child,
@@ -452,18 +479,10 @@
     white-space: nowrap;
   }
 
-  .modified-dot {
-    width: 6px;
-    height: 6px;
-    flex: 0 0 6px;
-    border-radius: 50%;
-    background: var(--color-warning-500);
-  }
-
   .file-meta {
     display: block;
-    color: var(--color-surface-600);
-    font-size: 0.58rem;
+    color: var(--chrome-muted);
+    font-size: 0.65rem;
   }
 
   .file-copy input {
@@ -482,35 +501,31 @@
   .row-actions {
     position: absolute;
     top: 50%;
-    right: 3px;
+    right: 5px;
     display: flex;
-    gap: 0;
+    gap: 2px;
     transform: translateY(-50%);
   }
 
   .row-actions button {
     display: grid;
-    width: 20px;
-    height: 22px;
+    width: 24px;
+    height: 26px;
     place-items: center;
     padding: 0;
     border: 0;
-    border-radius: 3px;
+    border-radius: 6px;
     background: transparent;
-    color: var(--color-surface-600);
+    color: var(--chrome-muted);
     cursor: pointer;
     opacity: 0;
     pointer-events: none;
     transition: color 100ms ease, background 100ms ease, opacity 100ms ease;
   }
 
-  .file-row.active .close-action {
-    opacity: 0.72;
-    pointer-events: auto;
-  }
-
+  .file-row.active .row-actions button,
   .file-row:hover .row-actions button,
-  .row-actions:focus-within button {
+  .file-row:focus-within .row-actions button {
     opacity: 1;
     pointer-events: auto;
   }
@@ -518,6 +533,15 @@
   .row-actions button:hover {
     background: color-mix(in oklab, var(--color-surface-600) 26%, transparent);
     color: var(--color-surface-50);
+  }
+
+  .row-actions .close-action:hover {
+    background: color-mix(in oklab, var(--color-error-500) 15%, transparent);
+    color: var(--color-error-300);
+  }
+
+  @media (hover: none) {
+    .row-actions button { opacity: 1; pointer-events: auto; }
   }
 
   .file-menu {
@@ -528,8 +552,8 @@
     overflow: hidden;
     border: 1px solid color-mix(in oklab, var(--color-surface-500) 42%, transparent);
     border-radius: 6px;
-    background: color-mix(in oklab, var(--color-surface-900) 97%, black);
-    box-shadow: 0 14px 38px rgb(0 0 0 / 40%);
+    background: var(--chrome-panel);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 24%);
   }
 
   .file-menu button {
@@ -583,6 +607,6 @@
 
   button:focus-visible {
     outline: 2px solid var(--color-primary-400);
-    outline-offset: 1px;
+    outline-offset: -2px;
   }
 </style>

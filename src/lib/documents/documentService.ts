@@ -352,8 +352,9 @@ async function reloadExternalFile(path: string): Promise<void> {
 
 export const documentService = {
   createUntitled(): string {
-    const encoding = get(configStore).default_encoding ?? 'utf-8';
-    return fileStore.addUntitledFile(encoding);
+    const config = get(configStore);
+    const encoding = config.default_encoding ?? 'utf-8';
+    return fileStore.addUntitledFile(encoding, config.new_file_name);
   },
 
   async openFromDialog(): Promise<void> {

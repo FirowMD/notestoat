@@ -70,7 +70,6 @@ pub fn run() {
         .setup(move |app| {
             let handle = app.handle();
             ConfigManager::set_instance_id(handle, instance_id).map_err(std::io::Error::other)?;
-            themes::ensure_default_theme_file(handle).map_err(std::io::Error::other)?;
             ConfigManager::load_config(handle).map_err(std::io::Error::other)?;
 
             for path in startup_files {
