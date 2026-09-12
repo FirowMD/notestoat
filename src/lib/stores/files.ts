@@ -1,7 +1,9 @@
 import { writable } from 'svelte/store';
-import { normalizePath } from '../documents/path';
+import { DEFAULT_NEW_FILE_NAME, formatNewFileName } from '../documents/newFileName';
+import { getExtension, normalizePath } from '../documents/path';
 import type { Encoding } from '../types/config';
 import type { FileInfo, NewFileInfo } from '../types/file';
+import { getLanguageFromExtension } from './language';
 
 export interface FileStoreState {
   files: FileInfo[];
@@ -21,18 +23,22 @@ function createFileStore() {
   return {
     subscribe,
 
-    addUntitledFile: (encoding: Encoding = 'utf-8'): string => {
+    addUntitledFile: (
+      encoding: Encoding = 'utf-8',
+      nameTemplate = DEFAULT_NEW_FILE_NAME
+    ): string => {
       let addedId = '';
       update(store => {
         addedId = store.nextId.toString();
         const now = new Date();
+        const name = formatNewFileName(nameTemplate, store.untitledCounter);
         const file: FileInfo = {
           id: addedId,
           path: '',
-          name: `Untitled_${store.untitledCounter}.txt`,
+          name,
           content: '',
           encoding,
-          language: 'plaintext',
+          language: getLanguageFromExtension(getExtension(name)),
           created: now,
           modified: now,
           isModified: false,

@@ -1,8 +1,7 @@
 <script lang="ts">
-  import { ArrowUpDown, Check, FilePlus, Files, FolderOpen, ListFilter, Search, X } from '@lucide/svelte';
+  import { ArrowUpDown, Check, Files, ListFilter, Search, X } from '@lucide/svelte';
   import { onMount } from 'svelte';
   import TabFile from './elems/TabFile.svelte';
-  import { documentService } from './documents/documentService';
   import { fileStore } from './stores/files';
 
   let searchQuery = '';
@@ -113,8 +112,10 @@
         bind:this={filterButton}
         type="button"
         class:active={filterMode !== 'all'}
+        class:expanded={isFilterMenuOpen}
         onclick={toggleFilterMenu}
-        title="Filter files"
+        title="Filter: {filterOptions.find(option => option[0] === filterMode)?.[1]}"
+        aria-label="Filter files"
         aria-haspopup="menu"
         aria-expanded={isFilterMenuOpen}
       >
@@ -124,66 +125,68 @@
         bind:this={sortButton}
         type="button"
         class:active={sortMode !== 'manual'}
+        class:expanded={isSortMenuOpen}
         onclick={toggleSortMenu}
-        title="Sort files"
+        title="Sort: {sortOptions.find(option => option[0] === sortMode)?.[1]}"
+        aria-label="Sort files"
         aria-haspopup="menu"
         aria-expanded={isSortMenuOpen}
       >
         <ArrowUpDown size={15} />
       </button>
     </div>
+
+    {#if isFilterMenuOpen}
+      <div bind:this={filterMenu} class="header-menu" role="menu" aria-label="Filter files">
+        <div class="menu-label">Show</div>
+        {#each filterOptions as option}
+          <button
+            type="button"
+            role="menuitemradio"
+            aria-checked={filterMode === option[0]}
+            onclick={() => {
+              filterMode = option[0];
+              isFilterMenuOpen = false;
+            }}
+          >
+            <span class="check-slot">{#if filterMode === option[0]}<Check size={13} />{/if}</span>
+            <span>{option[1]}</span>
+          </button>
+        {/each}
+      </div>
+    {/if}
+
+    {#if isSortMenuOpen}
+      <div bind:this={sortMenu} class="header-menu" role="menu" aria-label="Sort files">
+        <div class="menu-label">Sort by</div>
+        {#each sortOptions as option}
+          <button
+            type="button"
+            role="menuitemradio"
+            aria-checked={sortMode === option[0]}
+            onclick={() => {
+              sortMode = option[0];
+              isSortMenuOpen = false;
+            }}
+          >
+            <span class="check-slot">{#if sortMode === option[0]}<Check size={13} />{/if}</span>
+            <span>{option[1]}</span>
+          </button>
+        {/each}
+      </div>
+    {/if}
   </header>
-
-  {#if isFilterMenuOpen}
-    <div bind:this={filterMenu} class="header-menu" role="menu" aria-label="Filter files">
-      <div class="menu-label">Show</div>
-      {#each filterOptions as option}
-        <button
-          type="button"
-          role="menuitemradio"
-          aria-checked={filterMode === option[0]}
-          onclick={() => {
-            filterMode = option[0];
-            isFilterMenuOpen = false;
-          }}
-        >
-          <span class="check-slot">{#if filterMode === option[0]}<Check size={13} />{/if}</span>
-          <span>{option[1]}</span>
-        </button>
-      {/each}
-    </div>
-  {/if}
-
-  {#if isSortMenuOpen}
-    <div bind:this={sortMenu} class="header-menu" role="menu" aria-label="Sort files">
-      <div class="menu-label">Sort by</div>
-      {#each sortOptions as option}
-        <button
-          type="button"
-          role="menuitemradio"
-          aria-checked={sortMode === option[0]}
-          onclick={() => {
-            sortMode = option[0];
-            isSortMenuOpen = false;
-          }}
-        >
-          <span class="check-slot">{#if sortMode === option[0]}<Check size={13} />{/if}</span>
-          <span>{option[1]}</span>
-        </button>
-      {/each}
-    </div>
-  {/if}
 
   <div class="search-box">
     <Search size={14} />
     <input
       type="search"
       bind:value={searchQuery}
-      placeholder="Search files"
+      placeholder="Search files…"
       aria-label="Search open files"
     />
     {#if searchQuery}
-      <button type="button" onclick={() => searchQuery = ''} title="Clear search">
+      <button type="button" onclick={() => searchQuery = ''} title="Clear search" aria-label="Clear search">
         <X size={13} />
       </button>
     {/if}
@@ -210,16 +213,7 @@
       <div class="panel-empty">
         <Files size={26} strokeWidth={1.5} />
         <span>No open files</span>
-        <div>
-          <button type="button" onclick={() => documentService.createUntitled()}>
-            <FilePlus size={14} />
-            <span>New</span>
-          </button>
-          <button type="button" onclick={() => documentService.openFromDialog()}>
-            <FolderOpen size={14} />
-            <span>Open</span>
-          </button>
-        </div>
+        <small>Use New file or Open in the top bar to get started.</small>
       </div>
     {/if}
   </div>
@@ -234,38 +228,33 @@
     min-width: 0;
     min-height: 0;
     flex-direction: column;
-    border-right: 1px solid color-mix(in oklab, var(--color-surface-500) 28%, transparent);
-    background: color-mix(in oklab, var(--color-surface-900) 94%, black);
+    background: var(--chrome-panel);
     color: var(--color-surface-200);
   }
 
   .files-header {
+    position: relative;
     display: flex;
-    min-height: 40px;
+    min-height: 48px;
     align-items: center;
     justify-content: space-between;
-    padding: 0 8px 0 12px;
-    border-bottom: 1px solid color-mix(in oklab, var(--color-surface-500) 25%, transparent);
+    padding: 0 10px 0 14px;
   }
 
   .files-header > div:first-child {
     display: flex;
     align-items: center;
-    gap: 7px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-transform: uppercase;
+    gap: 8px;
+    color: var(--color-surface-300);
+    font-size: 0.75rem;
+    font-weight: 600;
   }
 
   .file-count {
-    display: grid;
-    min-width: 18px;
-    height: 18px;
-    place-items: center;
-    border-radius: 4px;
-    background: var(--color-surface-800);
-    color: var(--color-surface-400);
-    font-size: 0.62rem;
+    color: var(--chrome-muted);
+    font-size: 0.67rem;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
   }
 
   .header-actions {
@@ -275,46 +264,52 @@
 
   .header-actions button,
   .search-box button {
-    display: grid;
-    width: 27px;
-    height: 27px;
-    place-items: center;
-    padding: 0;
-    border: 0;
-    border-radius: 4px;
+    display: flex;
+    min-width: 28px;
+    height: 28px;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 7px;
+    border: 1px solid transparent;
+    border-radius: 6px;
     background: transparent;
-    color: var(--color-surface-400);
+    color: var(--chrome-muted);
+    font: inherit;
+    font-size: 0.7rem;
     cursor: pointer;
+    transition: background 140ms ease, color 140ms ease;
   }
 
   .header-actions button:hover,
   .search-box button:hover {
-    background: var(--color-surface-800);
+    background: var(--chrome-raised);
     color: var(--color-surface-100);
   }
 
-  .header-actions button.active {
-    background: color-mix(in oklab, var(--color-primary-700) 45%, var(--color-surface-900));
+  .header-actions button.active,
+  .header-actions button.expanded {
+    background: var(--chrome-selected);
     color: var(--color-primary-200);
   }
 
   .header-menu {
     position: absolute;
-    top: 36px;
-    right: 5px;
+    top: calc(100% - 4px);
+    right: 8px;
     z-index: 60;
-    width: 176px;
-    padding: 5px;
+    width: min(192px, calc(100% - 16px));
+    padding: 6px;
     overflow: hidden;
     border: 1px solid color-mix(in oklab, var(--color-surface-500) 42%, transparent);
     border-radius: 6px;
-    background: color-mix(in oklab, var(--color-surface-900) 97%, black);
-    box-shadow: 0 12px 32px rgb(0 0 0 / 38%);
+    background: var(--chrome-panel);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 24%);
   }
 
   .menu-label {
     padding: 5px 7px 4px;
-    color: var(--color-surface-600);
+    color: var(--chrome-muted);
     font-size: 0.6rem;
     font-weight: 700;
     text-transform: uppercase;
@@ -323,17 +318,17 @@
   .header-menu button {
     display: grid;
     width: 100%;
-    min-height: 30px;
+    min-height: 32px;
     grid-template-columns: 18px minmax(0, 1fr);
     align-items: center;
     gap: 5px;
     padding: 0 7px;
     border: 0;
-    border-radius: 3px;
+    border-radius: 6px;
     background: transparent;
     color: var(--color-surface-300);
     font: inherit;
-    font-size: 0.69rem;
+    font-size: 0.75rem;
     text-align: left;
     cursor: pointer;
   }
@@ -353,12 +348,13 @@
     position: relative;
     display: flex;
     height: 32px;
+    flex-shrink: 0;
     align-items: center;
-    margin: 8px;
-    border: 1px solid color-mix(in oklab, var(--color-surface-500) 42%, transparent);
-    border-radius: 5px;
-    background: var(--color-surface-950);
-    color: var(--color-surface-500);
+    margin: 0 10px 10px;
+    border: 1px solid var(--chrome-border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--chrome-muted);
   }
 
   .search-box > :global(svg) {
@@ -377,11 +373,11 @@
     background: transparent;
     color: var(--color-surface-100);
     font: inherit;
-    font-size: 0.72rem;
+    font-size: 0.75rem;
   }
 
   .search-box input::placeholder {
-    color: var(--color-surface-600);
+    color: var(--chrome-muted);
   }
 
   .search-box input::-webkit-search-cancel-button,
@@ -407,7 +403,7 @@
     min-height: 0;
     flex: 1;
     overflow-y: auto;
-    padding: 2px 5px 12px;
+    padding: 0 6px 12px;
   }
 
   .panel-empty {
@@ -418,7 +414,7 @@
     justify-content: center;
     gap: 9px;
     padding: 18px 8px;
-    color: var(--color-surface-500);
+    color: var(--chrome-muted);
     font-size: 0.72rem;
     text-align: center;
   }
@@ -427,9 +423,10 @@
     min-height: 130px;
   }
 
-  .panel-empty > div {
-    display: flex;
-    gap: 5px;
+  .panel-empty small {
+    max-width: 170px;
+    font-size: 0.7rem;
+    line-height: 1.6;
   }
 
   .panel-empty button {
@@ -438,9 +435,9 @@
     align-items: center;
     gap: 5px;
     padding: 0 8px;
-    border: 1px solid color-mix(in oklab, var(--color-surface-500) 38%, transparent);
-    border-radius: 4px;
-    background: var(--color-surface-800);
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: var(--chrome-raised);
     color: var(--color-surface-200);
     font: inherit;
     font-size: 0.68rem;
@@ -456,4 +453,5 @@
     outline: 2px solid var(--color-primary-400);
     outline-offset: 1px;
   }
+
 </style>

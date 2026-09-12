@@ -2,6 +2,7 @@
   import { Info, Minus, Plus, Settings2, X } from '@lucide/svelte';
   import { message } from '@tauri-apps/plugin-dialog';
   import { documentService } from './documents/documentService';
+  import { DEFAULT_NEW_FILE_NAME, getNewFileNameError } from './documents/newFileName';
   import { configStore } from './stores/configStore';
   import { editorStore } from './stores/editor';
   import { fileStore } from './stores/files';
@@ -52,8 +53,33 @@
     void configStore.save({ window_opacity: percent / 100 });
   }
 
+  function handleNewFileNameInput(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    input.setCustomValidity(getNewFileNameError(input.value) ?? '');
+  }
+
+  function handleNewFileNameChange(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const error = getNewFileNameError(input.value);
+    input.setCustomValidity(error ?? '');
+    if (error) {
+      input.reportValidity();
+      return;
+    }
+
+    const newFileName = input.value.trim();
+    input.value = newFileName;
+    void configStore.save({ new_file_name: newFileName });
+  }
+
+  function handleNewFileNameKeydown(event: KeyboardEvent) {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    (event.currentTarget as HTMLInputElement).blur();
+  }
+
   async function handleAbout() {
-    await message('NoteStoat v0.4.2', { title: 'About NoteStoat' });
+    await message('NoteStoat v0.4.3', { title: 'About NoteStoat' });
   }
 </script>
 
@@ -132,6 +158,21 @@
             <option value={encoding}>{encoding.toUpperCase()}</option>
           {/each}
         </select>
+      </label>
+
+      <label class="text-row">
+        <span>New file name</span>
+        <input
+          type="text"
+          value={$configStore.new_file_name ?? DEFAULT_NEW_FILE_NAME}
+          maxlength="128"
+          autocomplete="off"
+          spellcheck="false"
+          title="Use %d for the file number"
+          oninput={handleNewFileNameInput}
+          onchange={handleNewFileNameChange}
+          onkeydown={handleNewFileNameKeydown}
+        />
       </label>
     </section>
 
@@ -284,6 +325,7 @@
   .setting-row,
   .toggle-row,
   .select-row,
+  .text-row,
   .range-row {
     display: flex;
     min-height: 30px;
@@ -293,7 +335,8 @@
     font-size: 0.78rem;
   }
 
-  .select-row select {
+  .select-row select,
+  .text-row input {
     width: 160px;
     min-width: 0;
     height: 28px;
@@ -303,6 +346,9 @@
     background: var(--color-surface-950);
     color: var(--color-surface-100);
     font: inherit;
+  }
+
+  .select-row select {
     text-transform: capitalize;
   }
 

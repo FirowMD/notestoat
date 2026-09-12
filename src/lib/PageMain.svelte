@@ -19,7 +19,7 @@
 
   let isDragging = false;
   let contentRef: HTMLDivElement;
-  let sidebarPercent = 22;
+  let sidebarPercent = 26;
   let isResizingSidebar = false;
 
   $: sidebarStyle = 'flex-basis: ' + sidebarPercent + '%';
@@ -171,7 +171,7 @@
       </div>
       <!-- svelte-ignore a11y_no_noninteractive_tabindex a11y_no_noninteractive_element_interactions -->
       <div
-        class="relative z-20 w-1 shrink-0 cursor-col-resize bg-surface-800 transition-colors duration-150 after:absolute after:inset-y-0 after:-inset-x-1 after:content-[''] hover:bg-primary-500 focus-visible:bg-primary-500 focus-visible:outline-none {isResizingSidebar ? 'bg-primary-500' : ''}"
+        class="relative z-20 w-px shrink-0 cursor-col-resize bg-surface-500/25 transition-colors duration-150 after:absolute after:inset-y-0 after:-inset-x-1 after:content-[''] hover:bg-primary-500 focus-visible:bg-primary-500 focus-visible:outline-none {isResizingSidebar ? 'bg-primary-500' : ''}"
         role="separator"
         aria-label="Resize files panel"
         aria-orientation="vertical"

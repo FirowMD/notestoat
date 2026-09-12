@@ -36,8 +36,25 @@ html,
 body {
   margin: 0;
   color-scheme: dark;
-  font-family: var(--base-font-family, Bahnschrift, 'Segoe UI', sans-serif);
+  font-family: var(--base-font-family, 'Segoe UI Variable', 'Segoe UI', sans-serif);
   letter-spacing: 0;
+}
+
+/* Shared chrome colors follow the selected application theme. */
+[data-theme] {
+  --chrome-panel: var(--color-surface-900);
+  --chrome-raised: color-mix(in oklab, var(--color-surface-800) 55%, var(--chrome-panel));
+  --chrome-border: color-mix(in oklab, var(--color-surface-500) 18%, transparent);
+  --chrome-muted: var(--color-surface-400);
+  --chrome-selected: color-mix(in oklab, var(--color-primary-700) 20%, var(--chrome-panel));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
 
 button,

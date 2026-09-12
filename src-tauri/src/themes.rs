@@ -1,42 +1,18 @@
 use crate::config::ConfigManager;
 use std::fs;
 use std::path::Path;
-use tauri::path::BaseDirectory;
-use tauri::Manager;
 
-const FIROW_THEME_BUNDLED: &str = include_str!("../../static/Firow.json");
 const BUILT_IN_THEMES: [&str; 3] = ["vs", "vs-dark", "hc-black"];
 
 fn is_valid_theme_name(theme_name: &str) -> bool {
     !theme_name.is_empty()
+        && !theme_name.eq_ignore_ascii_case("Firow")
         && !theme_name.contains("..")
         && !theme_name.contains(|character| character == '/' || character == '\\')
         && Path::new(theme_name)
             .file_name()
             .and_then(|name| name.to_str())
             == Some(theme_name)
-}
-
-pub fn ensure_default_theme_file(app_handle: &tauri::AppHandle) -> Result<(), String> {
-    let themes_dir = ConfigManager::get_notestoat_dir(app_handle)?.join("monaco-editor");
-    fs::create_dir_all(&themes_dir).map_err(|error| error.to_string())?;
-
-    let theme_path = themes_dir.join("Firow.json");
-    if theme_path.exists() {
-        return Ok(());
-    }
-
-    if let Ok(resource_path) = app_handle
-        .path()
-        .resolve("Firow.json", BaseDirectory::Resource)
-    {
-        if resource_path.exists() {
-            fs::copy(resource_path, &theme_path).map_err(|error| error.to_string())?;
-            return Ok(());
-        }
-    }
-
-    fs::write(theme_path, FIROW_THEME_BUNDLED).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -52,7 +28,9 @@ pub fn get_monaco_themes(app_handle: tauri::AppHandle) -> Result<Vec<String>, St
         let path = entry.map_err(|error| error.to_string())?.path();
         if path.extension().and_then(|extension| extension.to_str()) == Some("json") {
             if let Some(theme_name) = path.file_stem().and_then(|name| name.to_str()) {
-                themes.push(theme_name.to_string());
+                if is_valid_theme_name(theme_name) {
+                    themes.push(theme_name.to_string());
+                }
             }
         }
     }
@@ -92,5 +70,13 @@ mod tests {
         assert!(!is_valid_theme_name("../secret"));
         assert!(!is_valid_theme_name("folder/theme"));
         assert!(is_valid_theme_name("Birds of Paradise"));
+    }
+
+    #[test]
+    fn excludes_the_retired_editor_theme() {
+        assert!(!is_valid_theme_name("Firow"));
+        assert!(!is_valid_theme_name("firow"));
+        assert!(is_valid_theme_name("vs-dark"));
+        assert!(is_valid_theme_name("Custom Theme"));
     }
 }

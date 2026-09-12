@@ -13,6 +13,7 @@ pub struct GlobalConfig {
     pub show_invisibles: Option<bool>,
     pub markdown_view_mode: Option<String>,
     pub default_encoding: Option<String>,
+    pub new_file_name: Option<String>,
     pub transparent_mode: Option<bool>,
     pub window_opacity: Option<f32>,
 }
@@ -21,12 +22,13 @@ impl Default for GlobalConfig {
     fn default() -> Self {
         Self {
             colorscheme: Some("Firow".to_string()),
-            monaco_editor_theme: Some("Firow".to_string()),
+            monaco_editor_theme: Some("vs-dark".to_string()),
             font_size: Some(14),
             word_wrap: Some(false),
             show_invisibles: Some(false),
             markdown_view_mode: Some("split".to_string()),
             default_encoding: Some("utf-8".to_string()),
+            new_file_name: Some("Untitled_%d.md".to_string()),
             transparent_mode: Some(false),
             window_opacity: Some(0.85),
         }
@@ -59,6 +61,7 @@ pub struct AppConfig {
     pub show_invisibles: Option<bool>,
     pub markdown_view_mode: Option<String>,
     pub default_encoding: Option<String>,
+    pub new_file_name: Option<String>,
     pub transparent_mode: Option<bool>,
     pub window_opacity: Option<f32>,
 }
@@ -67,7 +70,7 @@ impl Default for AppConfig {
     fn default() -> Self {
         Self {
             colorscheme: Some("Firow".to_string()),
-            monaco_editor_theme: Some("Firow".to_string()),
+            monaco_editor_theme: Some("vs-dark".to_string()),
             recent_files: Some(vec![]),
             opened_files: Some(vec![]),
             font_size: Some(14),
@@ -75,6 +78,7 @@ impl Default for AppConfig {
             show_invisibles: Some(false),
             markdown_view_mode: Some("split".to_string()),
             default_encoding: Some("utf-8".to_string()),
+            new_file_name: Some("Untitled_%d.md".to_string()),
             transparent_mode: Some(false),
             window_opacity: Some(0.85),
         }
@@ -95,6 +99,7 @@ impl AppConfig {
             show_invisibles: global.show_invisibles,
             markdown_view_mode: global.markdown_view_mode,
             default_encoding: global.default_encoding,
+            new_file_name: global.new_file_name,
             transparent_mode: global.transparent_mode,
             window_opacity: global.window_opacity,
             recent_files: instance.recent_files,
@@ -111,6 +116,7 @@ impl AppConfig {
             show_invisibles: self.show_invisibles,
             markdown_view_mode: self.markdown_view_mode.clone(),
             default_encoding: self.default_encoding.clone(),
+            new_file_name: self.new_file_name.clone(),
             transparent_mode: self.transparent_mode,
             window_opacity: self.window_opacity,
         }
@@ -326,14 +332,24 @@ pub fn get_config(app_handle: tauri::AppHandle) -> Result<AppConfig, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::AppConfig;
+    use super::{AppConfig, GlobalConfig};
 
     #[test]
-    fn default_config_exposes_the_frontend_encoding_field() {
+    fn default_themes_keep_firow_for_the_app_only() {
+        for config in [AppConfig::default().to_global(), GlobalConfig::default()] {
+            assert_eq!(config.colorscheme.as_deref(), Some("Firow"));
+            assert_eq!(config.monaco_editor_theme.as_deref(), Some("vs-dark"));
+        }
+    }
+
+    #[test]
+    fn default_config_exposes_frontend_document_fields() {
         let config = AppConfig::default();
         assert_eq!(config.default_encoding.as_deref(), Some("utf-8"));
+        assert_eq!(config.new_file_name.as_deref(), Some("Untitled_%d.md"));
 
         let json = serde_json::to_value(config).unwrap();
         assert_eq!(json["default_encoding"], "utf-8");
+        assert_eq!(json["new_file_name"], "Untitled_%d.md");
     }
 }

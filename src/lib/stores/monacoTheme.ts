@@ -4,7 +4,7 @@ import { configStore } from './configStore';
 import { parseMonacoThemeData } from '../schemas/monacoTheme';
 
 function createMonacoThemeStore() {
-  const { subscribe, set, update } = writable<string>('Firow');
+  const { subscribe, set, update } = writable<string>('vs-dark');
   let monaco: any = null;
 
   return {
@@ -77,7 +77,7 @@ function createMonacoThemeStore() {
         return themes;
       } catch (error) {
         console.error('Error getting Monaco themes:', error);
-        return ['vs', 'vs-dark', 'hc-black', 'Firow'];
+        return ['vs', 'vs-dark', 'hc-black'];
       }
     }
   };

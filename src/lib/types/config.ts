@@ -14,6 +14,7 @@ export interface AppConfig {
   show_invisibles?: boolean;
   markdown_view_mode?: MarkdownViewMode;
   default_encoding?: Encoding;
+  new_file_name?: string;
   transparent_mode?: boolean;
   window_opacity?: number;
 }
